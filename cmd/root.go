@@ -51,7 +51,7 @@ to quickly create a Cobra application.`,
 		server.Use(middleware.Logger())
 
 		generated.RegisterHandlers(server, api.Handlers{})
-		addr := fmt.Sprintf("%s:%d", viper.GetString(conf_interface), viper.GetInt(conf_port))
+		addr := fmt.Sprintf("%s:%d", viper.GetString(confInterface), viper.GetInt(confPort))
 		server.Logger.Fatal(server.Start(addr))
 	},
 }
@@ -75,15 +75,15 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().String(conf_interface, "localhost", "Server interface binding")
-	rootCmd.Flags().StringP(conf_port, "p", "1324", "Server listen port")
+	rootCmd.Flags().String(confInterface, "localhost", "Server interface binding")
+	rootCmd.Flags().StringP(confPort, "p", "1324", "Server listen port")
 
-	viper.BindPFlag(conf_port, rootCmd.Flags().Lookup(conf_port))
-	viper.BindPFlag(conf_interface, rootCmd.Flags().Lookup(conf_interface))
+	viper.BindPFlag(confPort, rootCmd.Flags().Lookup(confPort))
+	viper.BindPFlag(confInterface, rootCmd.Flags().Lookup(confInterface))
 
 	viper.SetEnvPrefix("NUTS_REGISTRY")
-	viper.BindEnv(conf_port)
-	viper.BindEnv(conf_interface)
+	viper.BindEnv(confPort)
+	viper.BindEnv(confInterface)
 
 }
 

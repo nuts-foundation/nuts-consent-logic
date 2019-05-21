@@ -18,7 +18,7 @@
 
 package cmd
 
-const conf_port = "port"
-const conf_interface = "interface"
+const confPort = "port"
+const confInterface = "interface"
 
 const version = `Nuts consent logic v0.1 -- HEAD`
