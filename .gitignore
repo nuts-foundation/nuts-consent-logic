@@ -2,3 +2,6 @@
 
 # ignore executable
 nuts-consent-logic
+
+# test code coverage
+coverage.txt
