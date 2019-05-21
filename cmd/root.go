@@ -42,12 +42,13 @@ to quickly create a Cobra application.`,
 	// Uncomment the following line if your bare application
 	// has an action associated with it:
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("Starting server")
 		server := echo.New()
+		server.HideBanner = true
 		server.Use(middleware.Logger())
 
-		generated.RegisterHandlers(server, api.ApiResource{})
-		server.Logger.Fatal(server.Start(fmt.Sprintf("%s:%d", viper.GetString("interface"), viper.GetInt("port"))))
+		generated.RegisterHandlers(server, api.Handlers{})
+		addr := fmt.Sprintf("%s:%d", viper.GetString(conf_interface), viper.GetInt(conf_port))
+		server.Logger.Fatal(server.Start(addr))
 	},
 }
 
@@ -70,16 +71,15 @@ func init() {
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
-	rootCmd.Flags().String(CONF_INTERFACE, "localhost", "Server interface binding")
-	rootCmd.Flags().StringP(CONF_PORT, "p", "1324", "Server listen port")
+	rootCmd.Flags().String(conf_interface, "localhost", "Server interface binding")
+	rootCmd.Flags().StringP(conf_port, "p", "1324", "Server listen port")
 
-	viper.BindPFlag(CONF_PORT, rootCmd.Flags().Lookup(CONF_PORT))
-	viper.BindPFlag(CONF_INTERFACE, rootCmd.Flags().Lookup(CONF_INTERFACE))
+	viper.BindPFlag(conf_port, rootCmd.Flags().Lookup(conf_port))
+	viper.BindPFlag(conf_interface, rootCmd.Flags().Lookup(conf_interface))
 
 	viper.SetEnvPrefix("NUTS_REGISTRY")
-	viper.BindEnv(CONF_PORT)
-	viper.BindEnv(CONF_INTERFACE)
+	viper.BindEnv(conf_port)
+	viper.BindEnv(conf_interface)
 
 }
 

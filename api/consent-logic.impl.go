@@ -22,9 +22,11 @@ import (
 	"net/http"
 )
 
-type ApiResource struct{}
+// Handlers provides the implementation of the generated ServerInterface
+type Handlers struct{}
 
-func (ApiResource) NutsConsentLogicCreateConsent(ctx echo.Context) error {
+// NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
+func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	createConsentRequest := new(generated.CreateConsentRequest)
 	if err := ctx.Bind(createConsentRequest); err != nil {
 		return err
@@ -32,7 +34,9 @@ func (ApiResource) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusOK, createConsentRequest)
 }
 
-func (ApiResource) NutsConsentLogicValidateConsent(ctx echo.Context) error {
+// NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the
+// consent-request with several rules. If valid it signs the fhir-consent-resource for each vendor with its private key
+// and responds with the signatures to the consent-bridge
+func (Handlers) NutsConsentLogicValidateConsent(ctx echo.Context) error {
 	panic("implement me")
 }
-
