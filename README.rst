@@ -22,4 +22,4 @@ Building and running
 
 This project is a go modules project.
 To build: run ``go build``.
-Start the service with ``./nuts-consent-logic``
+Start the service with ``./nuts-consent-logic --port=xxxx``
