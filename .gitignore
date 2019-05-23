@@ -5,3 +5,6 @@ nuts-consent-logic
 
 # test code coverage
 coverage.txt
+
+# ignore all generated pem files
+*.pem

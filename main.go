@@ -18,8 +18,17 @@
 
 package main
 
-import "github.com/nuts-foundation/nuts-consent-logic/cmd"
+import (
+	"github.com/nuts-foundation/nuts-consent-logic/cmd"
+	types "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/engine"
+)
 
 func main() {
+	cClient := engine.NewCryptoEngine()
+	cClient.Configure()
+	// TODO: generate these keys from a config file
+	cClient.GenerateKeyPairFor(types.LegalEntity{URI: "https://nuts.nl/identities/agb#00000007"})
+
 	cmd.Execute()
 }
