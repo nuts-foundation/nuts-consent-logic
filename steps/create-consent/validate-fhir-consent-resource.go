@@ -16,24 +16,21 @@
  *
  */
 
-package main
+package steps
 
 import (
-	"github.com/nuts-foundation/nuts-consent-logic/cmd"
-	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/engine"
+	"fmt"
 	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg/engine"
 )
 
-func main() {
-	cClient := cryptoEngine.NewCryptoEngine()
-	cClient.Configure()
-	// TODO: generate these keys from a config file
-	cClient.GenerateKeyPairFor(types.LegalEntity{URI: "https://nuts.nl/identities/agb#00000007"})
-
-	// This should work when the engine gets rewriten to a sing
+func ValidateFhirConsentResource(consentResource string) (bool, error) {
 	validationClient := validationEngine.NewValidationEngine()
+	// Fixme: can be removed when the validation engine is a singleton like the crypto engine
 	validationClient.Configure()
 
-	cmd.Execute()
+	valid, errors, err := validationClient.ValidateAgainstSchema([]byte(consentResource))
+	if !valid {
+		fmt.Println(errors, err)
+	}
+	return valid, err
 }

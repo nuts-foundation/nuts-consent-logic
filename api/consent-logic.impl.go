@@ -19,6 +19,7 @@
 package api
 
 import (
+	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/generated"
 	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
@@ -36,6 +37,8 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 		return err
 	}
 
+	var fhirConsent string
+
 	{
 		if res, err := steps.CustodianIsKnown(*createConsentRequest); !res || err != nil {
 			return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
@@ -47,8 +50,14 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 		}
 	}
 	{
-		if res, err := steps.CreateFhirConsentResource(*createConsentRequest); res == "" || err != nil {
+		var err error
+		if fhirConsent, err = steps.CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
 			return ctx.JSON(http.StatusBadRequest, "Could not create the FHIR consent resource")
+		}
+	}
+	{
+		if validationResult, err := steps.ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("The generated FHIR consent resource is invalid: %v", err))
 		}
 	}
 
