@@ -16,7 +16,7 @@
  *
  */
 
-package create_consent
+package steps
 
 import "github.com/nuts-foundation/nuts-consent-logic/generated"
 

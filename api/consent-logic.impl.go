@@ -37,17 +37,17 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	}
 
 	{
-		if res, err := create_consent.CustodianIsKnown(*createConsentRequest); !res || err != nil {
+		if res, err := steps.CustodianIsKnown(*createConsentRequest); !res || err != nil {
 			return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
 		}
 	}
 	{
-		if res, err := create_consent.GetConsentId(*createConsentRequest); res == "" || err != nil {
+		if res, err := steps.GetConsentId(*createConsentRequest); res == "" || err != nil {
 			return ctx.JSON(http.StatusBadRequest, "Could not create the consentId for this combination of subject and custodian")
 		}
 	}
 	{
-		if res, err := create_consent.CreateFhirConsentResource(*createConsentRequest); res == "" || err != nil {
+		if res, err := steps.CreateFhirConsentResource(*createConsentRequest); res == "" || err != nil {
 			return ctx.JSON(http.StatusBadRequest, "Could not create the FHIR consent resource")
 		}
 	}

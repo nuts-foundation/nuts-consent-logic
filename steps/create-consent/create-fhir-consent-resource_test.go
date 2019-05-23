@@ -16,7 +16,7 @@
  *
  */
 
-package create_consent
+package steps
 
 import (
 	"encoding/json"
