@@ -33,6 +33,9 @@ import (
 	"time"
 )
 
+// ActorURI defines component schema for ActorURI.
+type ActorURI string
+
 // ConsentValidationRequest defines component schema for ConsentValidationRequest.
 type ConsentValidationRequest struct {
 	ConsentId *string `json:"consentId,omitempty"`
@@ -40,32 +43,43 @@ type ConsentValidationRequest struct {
 
 // CreateConsentRequest defines component schema for CreateConsentRequest.
 type CreateConsentRequest struct {
-	InvolvedParties *struct {
-		Actors    []string `json:"actors,omitempty"`
-		Custodian string   `json:"custodian"`
-		Subject   *string  `json:"subject,omitempty"`
-	} `json:"involvedParties,omitempty"`
-	Meta *struct {
-		ConsentProof *struct {
-			ContentType *string `json:"contentType,omitempty"`
-			Data        *string `json:"data,omitempty"`
-		} `json:"consentProof,omitempty"`
-		PerformerIdentity *struct {
-			ContentType *string `json:"contentType,omitempty"`
-			Contract    *string `json:"contract,omitempty"`
-		} `json:"performerIdentity,omitempty"`
-		Period *struct {
-			End   *time.Time `json:"end,omitempty"`
-			Start *time.Time `json:"start,omitempty"`
-		} `json:"period,omitempty"`
-	} `json:"meta,omitempty"`
+	Actors       []ActorURI `json:"actors"`
+	ConsentProof struct {
+		// Embedded struct due to allOf(#/components/schemas/EmbeddedData)
+		EmbeddedData
+	} `json:"consentProof,omitempty"`
+	Custodian CustodianURI   `json:"custodian"`
+	Performer *IdentifierURI `json:"performer,omitempty"`
+	Period    *Period        `json:"period,omitempty"`
+	Subject   SubjectURI     `json:"subject"`
 }
+
+// CustodianURI defines component schema for CustodianURI.
+type CustodianURI string
+
+// EmbeddedData defines component schema for EmbeddedData.
+type EmbeddedData struct {
+	ContentType string `json:"contentType"`
+	Data        string `json:"data"`
+}
+
+// IdentifierURI defines component schema for IdentifierURI.
+type IdentifierURI string
 
 // JobCreatedResponse defines component schema for JobCreatedResponse.
 type JobCreatedResponse struct {
 	JobId      *string `json:"jobId,omitempty"`
 	ResultCode *string `json:"resultCode,omitempty"`
 }
+
+// Period defines component schema for Period.
+type Period struct {
+	End   time.Time `json:"end"`
+	Start time.Time `json:"start"`
+}
+
+// SubjectURI defines component schema for SubjectURI.
+type SubjectURI string
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -113,37 +127,37 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
-	"08Onh38HAAD//wSnOVbEEwAA",
+	"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",
 }
 
 // GetSwagger returns the Swagger specification corresponding to the generated code

@@ -9,27 +9,20 @@ POST http://localhost:1324/api/consent
 Content-Type: application/json
 
 {
-  "involvedParties": {
-    "subject": "https://nuts.nl/identities/bsn#999999990",
-    "custodian": "https://nuts.nl/identities/agb#00000000",
-    "actors": [
-      "https://nuts.nl/identities/agb#00000001",
-      "https://nuts.nl/identities/agb#00000002"
-    ]
+  "subject": "https://nuts.nl/identities/bsn#999999990",
+  "custodian": "https://nuts.nl/identities/agb#00000007",
+  "actors": [
+    "https://nuts.nl/identities/agb#00000001",
+    "https://nuts.nl/identities/agb#00000002"
+  ],
+  "performer": "https://nuts.nl/identities/agb#00000007",
+  "consentProof": {
+    "contentType": "application/pdf",
+    "data": "cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl"
   },
-  "meta": {
-    "performerIdentity": {
-      "contract": "dmFsaWQgaXJtYSBjb250cmFjdA==",
-      "contentType": "application/json+irma"
-    },
-    "consentProof": {
-      "contentType": "application/pdf",
-      "data": "cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl"
-    },
-    "period": {
-      "start": "2019-05-20T17:02:33+10:00",
-      "end": "2019-11-20T17:02:33+10:00"
-    }
+  "period": {
+    "start": "2019-05-20T17:02:33+10:00",
+    "end": "2019-11-20T17:02:33+10:00"
   }
 }
 

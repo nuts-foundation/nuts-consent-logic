@@ -81,7 +81,7 @@ func init() {
 	viper.BindPFlag(confPort, rootCmd.Flags().Lookup(confPort))
 	viper.BindPFlag(confInterface, rootCmd.Flags().Lookup(confInterface))
 
-	viper.SetEnvPrefix("NUTS_REGISTRY")
+	viper.SetEnvPrefix("NUTS_CONSENT_LOGIC")
 	viper.BindEnv(confPort)
 	viper.BindEnv(confInterface)
 

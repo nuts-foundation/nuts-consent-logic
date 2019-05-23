@@ -21,6 +21,7 @@ package api
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/generated"
+	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
 	"net/http"
 )
 
@@ -31,8 +32,26 @@ type Handlers struct{}
 func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	createConsentRequest := new(generated.CreateConsentRequest)
 	if err := ctx.Bind(createConsentRequest); err != nil {
+		ctx.Logger().Error("Could not unmarshall json body:", err)
 		return err
 	}
+
+	{
+		if res, err := create_consent.CustodianIsKnown(*createConsentRequest); !res || err != nil {
+			return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
+		}
+	}
+	{
+		if res, err := create_consent.GetConsentId(*createConsentRequest); res == "" || err != nil {
+			return ctx.JSON(http.StatusBadRequest, "Could not create the consentId for this combination of subject and custodian")
+		}
+	}
+	{
+		if res, err := create_consent.CreateFhirConsentResource(*createConsentRequest); res == "" || err != nil {
+			return ctx.JSON(http.StatusBadRequest, "Could not create the FHIR consent resource")
+		}
+	}
+
 	return ctx.JSON(http.StatusOK, createConsentRequest)
 }
 
