@@ -49,7 +49,7 @@ const template = `
   ],
   "patient": {
     "identifier": {
-      "system": "https://nuts.nl/identifiers/bsn",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
       "value": "{{subjectBsn}}"
     }
   },
@@ -57,14 +57,14 @@ const template = `
   "performer": [{
     "type": "Organization",
     "identifier": {
-      "system": "https://nuts.nl/identifiers/agb",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
       "value": "{{performerId}}"
     }
   }],
   {{/performerId}}
   "organization": [{
     "identifier": {
-      "system": "https://nuts.nl/identifiers/agb",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
       "value": "{{custodianAgb}}"
     }
   }],
@@ -79,7 +79,7 @@ const template = `
     "verifiedWith": {
       "type": "Patient",
       "identifier": {
-        "system": "https://nuts.nl/identifiers/bsn",
+        "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
         "value": "{{subjectBsn}}"
       }
     }
@@ -106,7 +106,7 @@ const template = `
         },
         "reference": {
           "identifier": {
-            "system": "https://nuts.nl/identifiers/agb",
+            "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
             "value": "{{.}}"
           }
         }
@@ -142,23 +142,28 @@ const template = `
 }
 `
 
+func valueFromUrn(urn string) string {
+	segments := strings.Split(urn, ":")
+	return segments[len(segments)-1]
+}
+
 func CreateFhirConsentResource(request generated.CreateConsentRequest) (string, error) {
 
 	var actorAgbs []string
 	for _, actor := range request.Actors {
-		actorAgbs = append(actorAgbs, strings.Split(string(actor), "#")[1])
+		actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
 	}
 
 	viewModel := map[string]interface{}{
-		"subjectBsn":   strings.Split(string(request.Subject), "#")[1],
+		"subjectBsn":   valueFromUrn(string(request.Subject)),
 		"actorAgbs":    actorAgbs,
-		"custodianAgb": strings.Split(string(request.Custodian), "#")[1],
+		"custodianAgb": valueFromUrn(string(request.Custodian)),
 		"period": map[string]string{
 			"Start": request.Period.Start.Format(time.RFC3339),
 			"End":   request.Period.End.Format(time.RFC3339),
 		},
 		"consentProof": request.ConsentProof,
-		"performerId":  strings.Split(string(*request.Performer), "#")[1],
+		"performerId":  valueFromUrn(string(*request.Performer)),
 	}
 	var (
 		res string

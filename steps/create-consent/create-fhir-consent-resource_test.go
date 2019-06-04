@@ -38,7 +38,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 		t.Error(err)
 	}
 
-	performerId := generated.IdentifierURI("https://nuts.nl/identities/agb#00000003")
+	performerId := generated.IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.3:00000003")
 
 	tests := []struct {
 		name    string
@@ -50,11 +50,11 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			"it can create a valid consent",
 			args{
 				generated.CreateConsentRequest{
-					Subject:   "https://nuts.nl/identities/bsn#999999990",
-					Custodian: "https://nuts.nl/identities/agb#00000000",
+					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.1:999999990",
+					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.3:00000000",
 					Actors: []generated.ActorURI{
-						"https://nuts.nl/identities/agb#00000001",
-						"https://nuts.nl/identities/agb#00000002",
+						"urn:oid:2.16.840.1.113883.2.4.6.3:00000001",
+						"urn:oid:2.16.840.1.113883.2.4.6.3:00000002",
 					},
 					Period: &generated.Period{
 						Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
@@ -90,10 +90,8 @@ func TestCreateFhirConsentResource(t *testing.T) {
 				t.Errorf("CreateFhirConsentResource() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			//if got != tt.want {
 			if !reflect.DeepEqual(o1, o2) {
-
-				t.Errorf("CreateFhirConsentResource() = %v, want %v", o1, o2)
+				t.Errorf("CreateFhirConsentResource() = %v, want %v", o2, o1)
 			}
 		})
 	}

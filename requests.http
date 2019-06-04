@@ -9,13 +9,13 @@ POST http://localhost:1324/api/consent
 Content-Type: application/json
 
 {
-  "subject": "https://nuts.nl/identities/bsn#999999990",
-  "custodian": "https://nuts.nl/identities/agb#00000007",
+  "subject": "urn:oid:2.16.840.1.113883.2.4.6.1:999999990",
+  "custodian": "urn:oid:2.16.840.1.113883.2.4.6.3:00000007",
   "actors": [
-    "https://nuts.nl/identities/agb#00000001",
-    "https://nuts.nl/identities/agb#00000002"
+    "urn:oid:2.16.840.1.113883.2.4.6.3:00000000",
+    "urn:oid:2.16.840.1.113883.2.4.6.3:00000002"
   ],
-  "performer": "https://nuts.nl/identities/agb#00000007",
+  "performer": "urn:oid:2.16.840.1.113883.2.4.6.1:00000007",
   "consentProof": {
     "contentType": "application/pdf",
     "data": "cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl"
