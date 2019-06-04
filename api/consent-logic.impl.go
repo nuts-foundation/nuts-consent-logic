@@ -23,7 +23,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/generated"
 	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
+	types "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-registry/pkg/registry"
 	"net/http"
+	"time"
 )
 
 // Handlers provides the implementation of the generated ServerInterface
@@ -38,6 +41,7 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	}
 
 	var fhirConsent string
+	var encryptedConsent types.DoubleEncryptedCipherText
 
 	{
 		if res, err := steps.CustodianIsKnown(*createConsentRequest); !res || err != nil {
@@ -46,6 +50,7 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	}
 	{
 		if res, err := steps.GetConsentId(*createConsentRequest); res == "" || err != nil {
+			fmt.Println(err)
 			return ctx.JSON(http.StatusBadRequest, "Could not create the consentId for this combination of subject and custodian")
 		}
 	}
@@ -59,6 +64,15 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 		if validationResult, err := steps.ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("The generated FHIR consent resource is invalid: %v", err))
 		}
+	}
+	{
+		var err error
+		// TODO: registry address should be provided by the registry.host and registry.port cli params
+		registryClient := registry.HttpClient{ServerAddress: "http://localhost:1323", Timeout: 100*time.Millisecond}
+		if encryptedConsent, err = steps.EncryptFhirConsent(registryClient, fhirConsent, *createConsentRequest); err != nil {
+			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("Could not encrypt consent resource for all involved parties: %v", err))
+		}
+		fmt.Println(encryptedConsent)
 	}
 
 	return ctx.JSON(http.StatusOK, createConsentRequest)
