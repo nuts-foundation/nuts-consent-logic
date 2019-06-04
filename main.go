@@ -21,19 +21,11 @@ package main
 import (
 	"github.com/nuts-foundation/nuts-consent-logic/cmd"
 	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/engine"
-	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg/engine"
+	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/crypto"
 )
 
 func main() {
-	cClient := cryptoEngine.NewCryptoEngine()
-	cClient.Configure()
-	// TODO: generate these keys from a config file
-	cClient.GenerateKeyPairFor(types.LegalEntity{URI: "https://nuts.nl/identities/agb#00000007"})
-
-	// This should work when the engine gets rewriten to a sing
-	validationClient := validationEngine.NewValidationEngine()
-	validationClient.Configure()
-
+	cClient := cryptoEngine.NewCryptoClient()
+	cClient.GenerateKeyPairFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.3:00000007"})
 	cmd.Execute()
 }

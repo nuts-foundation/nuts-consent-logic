@@ -20,7 +20,7 @@ package steps
 
 import (
 	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	"github.com/nuts-foundation/nuts-crypto/pkg/engine"
+	"github.com/nuts-foundation/nuts-crypto/pkg/crypto"
 	"testing"
 
 	"github.com/nuts-foundation/nuts-consent-logic/generated"
@@ -46,8 +46,7 @@ func TestGetConsentId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			cClient := engine.NewCryptoEngine()
-			cClient.Configure()
+			cClient := crypto.NewCryptoClient()
 			cClient.GenerateKeyPairFor(types.LegalEntity{URI: string(tt.args.request.Custodian)})
 
 			got, err := GetConsentId(tt.args.request)

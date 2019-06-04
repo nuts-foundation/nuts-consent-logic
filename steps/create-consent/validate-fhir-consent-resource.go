@@ -20,13 +20,11 @@ package steps
 
 import (
 	"fmt"
-	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg/engine"
+	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg"
 )
 
 func ValidateFhirConsentResource(consentResource string) (bool, error) {
-	validationClient := validationEngine.NewValidationEngine()
-	// Fixme: can be removed when the validation engine is a singleton like the crypto engine
-	validationClient.Configure()
+	validationClient := validationEngine.NewValidatorClient()
 
 	valid, errors, err := validationClient.ValidateAgainstSchema([]byte(consentResource))
 	if !valid {

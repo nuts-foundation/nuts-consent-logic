@@ -19,7 +19,7 @@
 package steps
 
 import (
-	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg/engine"
+	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg"
 	"github.com/spf13/viper"
 	"io/ioutil"
 	"testing"
