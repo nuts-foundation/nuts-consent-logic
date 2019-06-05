@@ -20,7 +20,7 @@ package steps
 
 import (
 	"github.com/golang/mock/gomock"
-	"github.com/nuts-foundation/nuts-consent-logic/generated"
+	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	types "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/crypto"
 	registryTypes "github.com/nuts-foundation/nuts-registry/pkg"
@@ -48,14 +48,14 @@ func TestEncryptFhirConsent(t *testing.T) {
 		ctrl := gomock.NewController(tt)
 		registryClient := registry.NewMockClient(ctrl)
 		defer ctrl.Finish()
-		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI:party1Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
-		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI:party2Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI: party1Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI: party2Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
 
-		request := generated.CreateConsentRequest{
-			Actors: []generated.ActorURI{
-				generated.ActorURI(party1Id.URI), generated.ActorURI(party2Id.URI),
+		request := pkg.CreateConsentRequest{
+			Actors: []pkg.IdentifierURI{
+				pkg.IdentifierURI(party1Id.URI), pkg.IdentifierURI(party2Id.URI),
 			},
-			Custodian: generated.CustodianURI(custodianId.URI),
+			Custodian: pkg.IdentifierURI(custodianId.URI),
 		}
 
 		encryptedContent, err := EncryptFhirConsent(registryClient, string(validConsent), request)
@@ -66,9 +66,9 @@ func TestEncryptFhirConsent(t *testing.T) {
 		}
 		// decrypt the content for the custodian and compare
 		result, err := cryptoClient.DecryptKeyAndCipherTextFor(types.DoubleEncryptedCipherText{
-			encryptedContent.CipherText,
-			[][]byte{encryptedContent.CipherTextKeys[0]},
-			encryptedContent.Nonce,
+			CipherText:     encryptedContent.CipherText,
+			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
+			Nonce:          encryptedContent.Nonce,
 		}, custodianId,
 		)
 		if err != nil {

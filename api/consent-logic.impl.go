@@ -21,27 +21,51 @@ package api
 import (
 	"fmt"
 	"github.com/labstack/echo/v4"
-	"github.com/nuts-foundation/nuts-consent-logic/generated"
+	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
-	types "github.com/nuts-foundation/nuts-crypto/pkg"
+	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/registry"
 	"net/http"
 	"time"
 )
 
-// Handlers provides the implementation of the generated ServerInterface
-type Handlers struct{}
+// Wrapper provides the implementation of the generated ServerInterface
+type Wrapper struct {
+	Cl *pkg.ConsentLogic
+}
 
 // NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
-func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
-	createConsentRequest := new(generated.CreateConsentRequest)
-	if err := ctx.Bind(createConsentRequest); err != nil {
+func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
+	createConsentApiRequest := new(CreateConsentRequest)
+	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshall json body:", err)
 		return err
 	}
 
+	//convert api type to internal type
+	createConsentRequest := &pkg.CreateConsentRequest{}
+	{
+		createConsentRequest.Custodian = pkg.IdentifierURI(createConsentApiRequest.Custodian)
+		createConsentRequest.Subject = pkg.IdentifierURI(createConsentApiRequest.Subject)
+		performer := pkg.IdentifierURI(*createConsentApiRequest.Performer)
+		createConsentRequest.Performer = &performer
+
+		for _, actor := range createConsentApiRequest.Actors {
+			createConsentRequest.Actors = append(createConsentRequest.Actors, pkg.IdentifierURI(actor))
+		}
+
+		consentProof := &pkg.EmbeddedData{
+			ContentType: createConsentApiRequest.ConsentProof.ContentType,
+			Data:        createConsentApiRequest.ConsentProof.ContentType,
+		}
+		createConsentRequest.ConsentProof = consentProof
+
+		period := pkg.Period{Start: createConsentApiRequest.Period.Start, End: createConsentApiRequest.Period.End}
+		createConsentRequest.Period = &period
+	}
+
 	var fhirConsent string
-	var encryptedConsent types.DoubleEncryptedCipherText
+	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 
 	{
 		if res, err := steps.CustodianIsKnown(*createConsentRequest); !res || err != nil {
@@ -68,7 +92,7 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	{
 		var err error
 		// TODO: registry address should be provided by the registry.host and registry.port cli params
-		registryClient := registry.HttpClient{ServerAddress: "http://localhost:1323", Timeout: 100*time.Millisecond}
+		registryClient := registry.HttpClient{ServerAddress: "http://localhost:1323", Timeout: 100 * time.Millisecond}
 		if encryptedConsent, err = steps.EncryptFhirConsent(registryClient, fhirConsent, *createConsentRequest); err != nil {
 			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("Could not encrypt consent resource for all involved parties: %v", err))
 		}
@@ -81,6 +105,6 @@ func (Handlers) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 // NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the
 // consent-request with several rules. If valid it signs the fhir-consent-resource for each vendor with its private key
 // and responds with the signatures to the consent-bridge
-func (Handlers) NutsConsentLogicValidateConsent(ctx echo.Context) error {
+func (Wrapper) NutsConsentLogicValidateConsent(ctx echo.Context) error {
 	panic("implement me")
 }

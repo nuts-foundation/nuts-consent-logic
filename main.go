@@ -20,12 +20,8 @@ package main
 
 import (
 	"github.com/nuts-foundation/nuts-consent-logic/cmd"
-	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/crypto"
 )
 
 func main() {
-	cClient := cryptoEngine.NewCryptoClient()
-	cClient.GenerateKeyPairFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.3:00000007"})
 	cmd.Execute()
 }

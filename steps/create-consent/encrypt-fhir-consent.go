@@ -21,14 +21,14 @@ package steps
 import (
 	"fmt"
 	"github.com/labstack/gommon/log"
-	"github.com/nuts-foundation/nuts-consent-logic/generated"
+	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/crypto"
 	registryTypes "github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/registry"
 )
 
-func EncryptFhirConsent(registryClient registry.Client, fhirConsent string, request generated.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
+func EncryptFhirConsent(registryClient registry.Client, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
 	// list of PEM encoded pubic keys to encrypt the record
 	var partyKeys []string
 
@@ -36,10 +36,10 @@ func EncryptFhirConsent(registryClient registry.Client, fhirConsent string, requ
 	for _, actor := range request.Actors {
 		// get public key for actor
 		organization, err := registryClient.OrganizationById(registryTypes.LegalEntity{URI: string(actor)})
-		pk := *organization.PublicKey
 		if err != nil {
 			fmt.Printf("error while getting public key for actor: %v from registry: %v", actor, err)
 		}
+		pk := *organization.PublicKey
 		log.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}

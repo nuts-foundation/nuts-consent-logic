@@ -30,7 +30,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		a       Handlers
+		a       Wrapper
 		args    args
 		wantErr bool
 	}{
@@ -38,9 +38,9 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := Handlers{}
+			a := Wrapper{}
 			if err := a.NutsConsentLogicCreateConsent(tt.args.ctx); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.NutsConsentLogicCreateConsent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Wrapper.NutsConsentLogicCreateConsent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
@@ -52,7 +52,7 @@ func TestApiResource_NutsConsentLogicValidateConsent(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		a       Handlers
+		a       Wrapper
 		args    args
 		wantErr bool
 	}{
@@ -60,9 +60,9 @@ func TestApiResource_NutsConsentLogicValidateConsent(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			a := Handlers{}
+			a := Wrapper{}
 			if err := a.NutsConsentLogicValidateConsent(tt.args.ctx); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.NutsConsentLogicValidateConsent() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("Wrapper.NutsConsentLogicValidateConsent() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}

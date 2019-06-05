@@ -16,12 +16,40 @@
  *
  */
 
-package steps
+package pkg
 
 import (
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	"github.com/labstack/gommon/log"
+	"sync"
 )
 
-func CustodianIsKnown(request pkg.CreateConsentRequest) (bool, error) {
-	return true, nil
+type ConsentLogicConfig struct {
+}
+
+type ConsentLogic struct {
+	Config ConsentLogicConfig
+}
+
+var instance *ConsentLogic
+var oneEngine sync.Once
+
+func ConsentLogicInstance() *ConsentLogic {
+	oneEngine.Do(func() {
+		instance = &ConsentLogic{}
+	})
+	return instance
+}
+
+func (cl ConsentLogic) StartConsentFlow() {
+	log.Debug("starting consent flow")
+}
+
+func (ConsentLogic) Start() error {
+	// Stub
+	return nil
+}
+
+func (ConsentLogic) Shutdown() error {
+	// Stub
+	return nil
 }

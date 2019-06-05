@@ -195,6 +195,8 @@ github.com/nuts-foundation/nuts-registry v0.0.0-20190528080114-6638f71662f0 h1:/
 github.com/nuts-foundation/nuts-registry v0.0.0-20190528080114-6638f71662f0/go.mod h1:a79KRbnpz5NRiMnLBmmMOIg7JTCz2vq4DlJxtyvexRo=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190604085128-2ee05f3cb03a h1:Lb/biYIZwhBIGFDQYh1708hKwrr83bI4f6Jcmy1Pjp8=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190604085128-2ee05f3cb03a/go.mod h1:jjsf4HjBKwKlMVU/yX0F8s+k4AlPDZtpxfSSsJBaBMY=
+github.com/nuts-foundation/nuts-registry v0.0.0-20190605083710-5bf16300f157 h1:Ssy2NgrkNW7ERgA7jgrb8n+igqWfJ8f+iV8XsBRXBTw=
+github.com/nuts-foundation/nuts-registry v0.0.0-20190605083710-5bf16300f157/go.mod h1:YSYBCKwFdxbaDf9/m+ls53l7Q+xcBBA3VEpT52QEn5A=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=

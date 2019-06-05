@@ -16,12 +16,13 @@
  *
  */
 
-package steps
+package pkg
 
-import (
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-)
+type ConsentLogicClient interface {
+	StartConsentFlow()
 
-func CustodianIsKnown(request pkg.CreateConsentRequest) (bool, error) {
-	return true, nil
+}
+
+func NewConsentLogicClient() ConsentLogicClient {
+	return ConsentLogicInstance()
 }

@@ -16,12 +16,30 @@
  *
  */
 
-package steps
+package engine
 
 import (
+	"github.com/deepmap/oapi-codegen/pkg/runtime"
+	"github.com/nuts-foundation/nuts-consent-logic/api"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	engine "github.com/nuts-foundation/nuts-go/pkg"
+	"github.com/spf13/cobra"
+	"go/types"
 )
 
-func CustodianIsKnown(request pkg.CreateConsentRequest) (bool, error) {
-	return true, nil
+func NewConsentLogicEngine() *engine.Engine {
+	cl := pkg.ConsentLogicInstance()
+
+	return &engine.Engine{
+		Name: "ConsentLogicInstance",
+		Cmd: cmd(),
+		Start: cl.Start,
+		Shutdown: cl.Shutdown,
+		Routes: func(router runtime.EchoRouter) {
+			api.RegisterHandlers(router, &api.Wrapper{Cl: cl})
+		},
+	}
+}
+
+	return cmd
 }

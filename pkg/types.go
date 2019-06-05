@@ -16,12 +16,33 @@
  *
  */
 
-package steps
+
+package pkg
 
 import (
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	"time"
 )
 
-func CustodianIsKnown(request pkg.CreateConsentRequest) (bool, error) {
-	return true, nil
+type CreateConsentRequest struct {
+	Actors       []IdentifierURI
+	ConsentProof *EmbeddedData
+	Custodian IdentifierURI
+	Performer *IdentifierURI
+	Period    *Period
+	Subject   IdentifierURI
 }
+
+// EmbeddedData defines component schema for EmbeddedData.
+type EmbeddedData struct {
+	ContentType string
+	Data        string
+}
+
+// Period defines component schema for Period.
+type Period struct {
+	End   time.Time
+	Start time.Time
+}
+
+// IdentifierURI defines component schema for IdentifierURI.
+type IdentifierURI string
