@@ -25,82 +25,74 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/api"
 	"github.com/nuts-foundation/nuts-consent-logic/engine"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	"os"
-
-	"github.com/mitchellh/go-homedir"
+	nutsgo "github.com/nuts-foundation/nuts-go/pkg"
+	engine2 "github.com/nuts-foundation/nuts-registry/engine"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
+	"os"
+	"strings"
 )
 
 var e = engine.NewConsentLogicEngine()
-var rootCmd = e.Cmd
+var rootCommand = e.Cmd
 
-var cfgFile string
+var serveCommand = &cobra.Command{
+	Use:   "serve",
+	Short: "Start consent-logic as a standalone api server",
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("Print: " + strings.Join(args, " "))
+		server := echo.New()
+		server.HideBanner = true
+		server.Use(middleware.Logger())
+		api.RegisterHandlers(server, api.Wrapper{Cl: pkg.ConsentLogicInstance()})
+		addr := fmt.Sprintf("%s:%d", serverInterface, serverPort)
+		server.Logger.Fatal(server.Start(addr))
+	},
+}
+var (
+	serverInterface string
+	serverPort      int
+)
+
+func init() {
+	serveCommand.Flags().StringVar(&serverInterface, confInterface, "localhost", "Server interface binding")
+	serveCommand.Flags().IntVarP(&serverPort, confPort, "p", 1324, "Server listen port")
+	rootCommand.AddCommand(serveCommand)
+}
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	c := nutsgo.NutsConfig()
+	c.IgnoredPrefixes = append(c.IgnoredPrefixes, e.ConfigKey)
+	c.RegisterFlags(rootCommand, e)
 
-	rootCmd.AddCommand(&cobra.Command{
-		Use:   "serve",
-		Short: "Start the consent logic api server",
-		Run: func(cmd *cobra.Command, args []string) {
-			server := echo.New()
-			server.HideBanner = true
-			server.Use(middleware.Logger())
-			api.RegisterHandlers(server, api.Wrapper{Cl: pkg.ConsentLogicInstance()})
-			addr := fmt.Sprintf("%s:%d", viper.GetString(confInterface), viper.GetInt(confPort))
-			server.Logger.Fatal(server.Start(addr))
-		},
-	})
+	reg := engine2.NewRegistryEngine()
+	c.RegisterFlags(rootCommand, reg)
 
-	rootCmd.Execute()
-}
-
-func init() {
-	cobra.OnInitialize(initConfig)
-
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.nuts-consent-logic.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().String(confInterface, "localhost", "Server interface binding")
-	rootCmd.Flags().StringP(confPort, "p", "1324", "Server listen port")
-
-	viper.BindPFlag(confPort, rootCmd.Flags().Lookup(confPort))
-	viper.BindPFlag(confInterface, rootCmd.Flags().Lookup(confInterface))
-
-	viper.SetEnvPrefix("NUTS_CONSENT_LOGIC")
-	viper.BindEnv(confPort)
-	viper.BindEnv(confInterface)
-
-}
-
-// initConfig reads in config file and ENV variables if set.
-func initConfig() {
-	if cfgFile != "" {
-		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-	} else {
-		// Find home directory.
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-
-		// Search config in home directory with name ".nuts-consent-logic" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigName(".nuts-consent-logic")
+	if err := c.Load(rootCommand); err != nil {
+		panic(err)
 	}
 
-	viper.AutomaticEnv() // read in environment variables that match
+	c.PrintConfig()
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	if err := c.InjectIntoEngine(e); err != nil {
+		panic(err)
+	}
+
+	if err := c.InjectIntoEngine(reg); err != nil {
+		panic(err)
+	}
+
+	if err := e.Configure(); err != nil {
+		panic(err)
+	}
+
+	if err := reg.Configure(); err != nil {
+		panic(err)
+	}
+
+	if err := rootCommand.Execute(); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
 	}
 }

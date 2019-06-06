@@ -22,20 +22,19 @@ import (
 	"fmt"
 	"github.com/labstack/gommon/log"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg"
-	cryptoEngine "github.com/nuts-foundation/nuts-crypto/pkg/crypto"
-	registryTypes "github.com/nuts-foundation/nuts-registry/pkg"
-	"github.com/nuts-foundation/nuts-registry/pkg/registry"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
+	registry "github.com/nuts-foundation/nuts-registry/pkg"
 )
 
-func EncryptFhirConsent(registryClient registry.Client, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
+func EncryptFhirConsent(registryClient registry.RegistryClient, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
 	// list of PEM encoded pubic keys to encrypt the record
 	var partyKeys []string
 
 
 	for _, actor := range request.Actors {
 		// get public key for actor
-		organization, err := registryClient.OrganizationById(registryTypes.LegalEntity{URI: string(actor)})
+		organization, err := registryClient.OrganizationById(string(actor))
 		if err != nil {
 			fmt.Printf("error while getting public key for actor: %v from registry: %v", actor, err)
 		}
@@ -43,6 +42,6 @@ func EncryptFhirConsent(registryClient registry.Client, fhirConsent string, requ
 		log.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}
-	cClient := cryptoEngine.NewCryptoClient()
+	cClient := crypto.NewCryptoClient()
 	return cClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
 }

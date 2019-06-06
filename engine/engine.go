@@ -24,6 +24,7 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	engine "github.com/nuts-foundation/nuts-go/pkg"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"go/types"
 )
 
@@ -33,7 +34,10 @@ func NewConsentLogicEngine() *engine.Engine {
 	return &engine.Engine{
 		Name: "ConsentLogicInstance",
 		Cmd: cmd(),
+		Configure: cl.Configure,
 		Start: cl.Start,
+		ConfigKey: "clogic",
+		FlagSet: flagSet(),
 		Shutdown: cl.Shutdown,
 		Routes: func(router runtime.EchoRouter) {
 			api.RegisterHandlers(router, &api.Wrapper{Cl: cl})
@@ -41,5 +45,32 @@ func NewConsentLogicEngine() *engine.Engine {
 	}
 }
 
+func flagSet() *pflag.FlagSet {
+	flags := pflag.NewFlagSet("cstore", pflag.ContinueOnError)
+	return flags
+}
+
+func cmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use: "consent-logic",
+		Short:"consent logic commands",
+	}
+
+	cmd.AddCommand(&cobra.Command{
+		Use: "create [subject] [custodian] [actors] [performer]? [proof]?",
+		Example: "create urn:oid:2.16.840.1.113883.2.4.6.3:999999990 urn:oid:2.16.840.1.113883.2.4.6.1:00000007 urn:oid:2.16.840.1.113883.2.4.6.1:00000001,urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
+		Short: "initiate a new consent record flow for subject, custodian and actors. Actors is comma-seperated",
+
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 3 {
+				return types.Error{Msg: "requires at least a subject, custodian and actors"}
+			}
+			return nil
+		},
+		Run: func(cmd *cobra.Command, args []string) {
+			clc := pkg.NewConsentLogicClient()
+			clc.StartConsentFlow()
+		},
+	})
 	return cmd
 }

@@ -23,5 +23,7 @@ import (
 )
 
 func main() {
+	//cClient := cryptoEngine.NewCryptoClient()
+	//cClient.GenerateKeyPairFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.3:00000007"})
 	cmd.Execute()
 }

@@ -22,10 +22,9 @@ import (
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	"github.com/nuts-foundation/nuts-crypto/pkg/crypto"
-	registryTypes "github.com/nuts-foundation/nuts-registry/pkg"
-	registryGenerated "github.com/nuts-foundation/nuts-registry/pkg/generated"
-	"github.com/nuts-foundation/nuts-registry/pkg/registry"
+	types2 "github.com/nuts-foundation/nuts-crypto/pkg/types"
+	"github.com/nuts-foundation/nuts-registry/mock"
+	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	"io/ioutil"
 	"testing"
 )
@@ -36,26 +35,26 @@ func TestEncryptFhirConsent(t *testing.T) {
 		t.Error(err)
 	}
 
-	custodianId := types.LegalEntity{URI: "agb:00000001"}
-	party1Id := types.LegalEntity{URI: "agb:00000002"}
-	party2Id := types.LegalEntity{URI: "agb:00000003"}
+	custodianId := "agb:00000001"
+	party1Id := "agb:00000002"
+	party2Id := "agb:00000003"
 
-	cryptoClient := crypto.NewCryptoClient()
-	cryptoClient.GenerateKeyPairFor(custodianId)
-	publicKey, _ := cryptoClient.PublicKey(custodianId)
+	cryptoClient := types.NewCryptoClient()
+	cryptoClient.GenerateKeyPairFor(types2.LegalEntity{URI: custodianId})
+	publicKey, _ := cryptoClient.PublicKey(types2.LegalEntity{URI: custodianId})
 
 	t.Run("it should encrypt the consent resource", func(tt *testing.T) {
 		ctrl := gomock.NewController(tt)
-		registryClient := registry.NewMockClient(ctrl)
+		registryClient := mock.NewMockRegistryClient(ctrl)
 		defer ctrl.Finish()
-		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI: party1Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
-		registryClient.EXPECT().OrganizationById(gomock.Eq(registryTypes.LegalEntity{URI: party2Id.URI})).Return(&registryGenerated.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(party2Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
 
 		request := pkg.CreateConsentRequest{
 			Actors: []pkg.IdentifierURI{
-				pkg.IdentifierURI(party1Id.URI), pkg.IdentifierURI(party2Id.URI),
+				pkg.IdentifierURI(party1Id), pkg.IdentifierURI(party2Id),
 			},
-			Custodian: pkg.IdentifierURI(custodianId.URI),
+			Custodian: pkg.IdentifierURI(custodianId),
 		}
 
 		encryptedContent, err := EncryptFhirConsent(registryClient, string(validConsent), request)
@@ -65,11 +64,11 @@ func TestEncryptFhirConsent(t *testing.T) {
 			return
 		}
 		// decrypt the content for the custodian and compare
-		result, err := cryptoClient.DecryptKeyAndCipherTextFor(types.DoubleEncryptedCipherText{
+		result, err := cryptoClient.DecryptKeyAndCipherTextFor(types2.DoubleEncryptedCipherText{
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, custodianId,
+		}, types2.LegalEntity{URI: custodianId},
 		)
 		if err != nil {
 			t.Error("Error while decrypting text:", err)

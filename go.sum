@@ -70,6 +70,7 @@ github.com/gocql/gocql v0.0.0-20190301043612-f6df8288f9b4/go.mod h1:4Fw1eo5iaEhD
 github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.0/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/gogo/protobuf v1.2.1/go.mod h1:hp+jE20tsWTFYpLwKvXlhS1hjn+gTNwPg2I6zVXpSg4=
+github.com/golang-migrate/migrate/v4 v4.3.1 h1:3eR1NY+pplX+m6yJ1fQf5dFWX3fBgUtZfDiaS/kJVu4=
 github.com/golang-migrate/migrate/v4 v4.3.1/go.mod h1:mJ89KBgbXmM3P49BqOxRL3riNF/ATlg5kMhm17GA0dE=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b h1:VKtxabqXZkF25pY9ekfRL6a582T4P37/31XEstQ5p58=
 github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b/go.mod h1:SBH7ygxi8pfUlaOkMMuAQtPIUF8ecWP5IEl/CR7VP2Q=
@@ -93,7 +94,9 @@ github.com/gorilla/context v1.1.1/go.mod h1:kBGZzfjB9CEq2AlWe17Uuf7NDRt0dE0s8S51
 github.com/gorilla/mux v1.6.2/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
 github.com/gorilla/mux v1.7.1/go.mod h1:1lud6UwP+6orDFRuTfBEV8e9/aOM/c4fVVCaMa2zaAs=
 github.com/hailocab/go-hostpool v0.0.0-20160125115350-e80d13ce29ed/go.mod h1:tMWxXQ9wFIaZeTI9F+hmhFiGpFmhOHzyShyFUhRm0H4=
+github.com/hashicorp/errwrap v1.0.0 h1:hLrqtEDnRye3+sgx6z4qVLNuviH3MR5aQ0ykNJa/UYA=
 github.com/hashicorp/errwrap v1.0.0/go.mod h1:YH+1FKiLXxHSkmPseP+kNlulaMuP3n2brvKWEqk/Jc4=
+github.com/hashicorp/go-multierror v1.0.0 h1:iVjPR7a6H0tWELX5NxNe7bYopibicUzc7uPribsnS6o=
 github.com/hashicorp/go-multierror v1.0.0/go.mod h1:dHtQlpGsu+cZNNAkkCN/P3hoUDHhCYQXV3UM06sGGrk=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.1/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
@@ -103,7 +106,9 @@ github.com/hpcloud/tail v1.0.0/go.mod h1:ab1qPbhIpdTxEkNHXyeSf5vhxWSCs/tWer42PpO
 github.com/inconshreveable/mousetrap v1.0.0/go.mod h1:PxqpIevigyE2G7u3NXJIT2ANytuPF1OarO4DADm73n8=
 github.com/jackc/fake v0.0.0-20150926172116-812a484cc733/go.mod h1:WrMFNQdiFJ80sQsxDoMokWK1W5TQtxBFNpzWTD84ibQ=
 github.com/jackc/pgx v3.2.0+incompatible/go.mod h1:0ZGrqGqkRlliWnWB4zKnWtjbSWbGkVEFm4TeybAXq+I=
+github.com/jinzhu/gorm v1.9.8 h1:n5uvxqLepIP2R1XF7pudpt9Rv8I3m7G9trGxJVjLZ5k=
 github.com/jinzhu/gorm v1.9.8/go.mod h1:bdqTT3q6dhSph2K3pWxrHP6nqxuAp2yQ3KFtc3U3F84=
+github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a h1:eeaG9XMUvRBYXJi4pg1ZKM7nxc5AfXfojeLLW7O5J3k=
 github.com/jinzhu/inflection v0.0.0-20180308033659-04140366298a/go.mod h1:h+uFLlag+Qp1Va5pdKtLDYj+kHp5pxUVkryuEj+Srlc=
 github.com/jinzhu/now v1.0.0/go.mod h1:oHTiXerJ20+SfYcrdlBO7rzZRJWGwSTQ0iUY2jI6Gfc=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
@@ -137,6 +142,7 @@ github.com/mattn/go-isatty v0.0.4/go.mod h1:M+lRXTBqGeGNdLjl/ufCoiOlB5xdOkqRJdNx
 github.com/mattn/go-isatty v0.0.5/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
 github.com/mattn/go-isatty v0.0.7 h1:UvyT9uN+3r7yLEYSlJsbQGdsaB/a0DlgWP3pql6iwOc=
 github.com/mattn/go-isatty v0.0.7/go.mod h1:Iq45c/XA43vh69/j3iqttzPXn0bhXyGjM0Hdxcsrc5s=
+github.com/mattn/go-sqlite3 v1.10.0 h1:jbhqpg7tQe4SupckyijYiy0mJJ/pRyHvXf7JdWK860o=
 github.com/mattn/go-sqlite3 v1.10.0/go.mod h1:FPy6KqzDD04eiIsT53CuJW3U88zkxoIYsOqkbpncsNc=
 github.com/matttproud/golang_protobuf_extensions v1.0.1/go.mod h1:D8He9yQNgCq6Z5Ld7szi9bcBfOoFv/3dc6xSMkL2PC0=
 github.com/mitchellh/go-homedir v1.1.0 h1:lukF9ziXFxDFPkA1vsr5zpc1XuPDn/wFntq5mG+4E0Y=
@@ -146,7 +152,10 @@ github.com/mitchellh/mapstructure v1.1.2/go.mod h1:FVVH3fgwuzCH5S8UJGiWEs2h04kUh
 github.com/mongodb/mongo-go-driver v0.3.0/go.mod h1:NK/HWDIIZkaYsnYa0hmtP443T5ELr0KDecmIioVuuyU=
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/nakagami/firebirdsql v0.0.0-20190310045651-3c02a58cfed8/go.mod h1:86wM1zFnC6/uDBfZGNwB65O+pR2OFi5q/YQaEUid1qA=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20190531121055-813c27871b00 h1:+GziXE24RXcoBYtdHxpeuHS0LBLdGMdiqMXkUR+zfno=
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20190531121055-813c27871b00/go.mod h1:i4OnsWdK5qN+pPsxCrky0fHeSFsvQtYANbp0+XyXPF8=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20190604123652-7d850e484b78 h1:uu3Z6772q6H1H6HIw1JDFR/GuD89BDKoXlyt7E91Bus=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20190604123652-7d850e484b78/go.mod h1:3hb0KZRzJODb7CKrJGheP81OqWyFmjbn8i3ENg8eWbA=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190514100741-540cb973b331/go.mod h1:WYfWFdU0lVkXCBuNNPAPfo6y6xwIEzMpLp3CkfTEto4=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190514100741-dc8c617c35ac/go.mod h1:odRVRQSK5zrUkhs+ihcNInvhoAg+SKGEuGWDVrZ7CNA=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190521140600-db18d3e75f95 h1:QNwohM4VfgyDMxkFJ+SlrEdAgMUx/hYEq6JFD0dRZC4=
@@ -163,6 +172,8 @@ github.com/nuts-foundation/nuts-crypto v0.0.0-20190531110500-401151a27ad2 h1:M7D
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190531110500-401151a27ad2/go.mod h1:0IASF6X1UFe2UfC+oR+xvBGjze5RmIFpR1/AZqnT6eU=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190604132549-a436c26714c4 h1:fyh+RvxJ9UF7CjYp5OlUjMbaCQQGxtwt6xXKBiYDXIQ=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190604132549-a436c26714c4/go.mod h1:0IASF6X1UFe2UfC+oR+xvBGjze5RmIFpR1/AZqnT6eU=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190605125317-682a94b249fa h1:708oSTGbJuaa9nw/mhZKtab1GLn6WCnj7zyn8zVSHck=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190605125317-682a94b249fa/go.mod h1:NITZqe/REXsV5g3zmG2OC8zssVKpsJ01aV1TZ7NnwF8=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190521115806-20d420b92f2a h1:O+d+Q4V3gfHo9CmS+/sFfaubvF+vmorhM5PuJgOdoLM=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190521115806-20d420b92f2a/go.mod h1:ryd3lcbAQtRdoT8mhdywrVBNtfW9K/+ntJu0LkzXXF0=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190528075634-03be0d14821d h1:FN/kaM1I4sO7YQVJsIThi5LEk1yX663BsTNjXvWQitw=
@@ -174,6 +185,7 @@ github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190603114731-170e4d0f8c
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190603114731-170e4d0f8c22/go.mod h1:JXaIzFk8Dhj8atfj1Ipz1pwSQcn8pE0mX3msL4Lkjjc=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190603142147-78e57b4a55f1 h1:nzF58Zfp4P1LnWP7DkLE3IRVgljW82bk5x4/dcOvc+8=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190603142147-78e57b4a55f1/go.mod h1:7MwO8BYMikiJq87pbu1Hh5Wi0pvzfkFTaZS0W484mRc=
+github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604083237-b02c5fce77f0/go.mod h1:7MwO8BYMikiJq87pbu1Hh5Wi0pvzfkFTaZS0W484mRc=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604115840-6e499c52a633 h1:3NpaH7nPp9nFafAzG0I+StOJAo7/on8CnFVbRBiNVkE=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604115840-6e499c52a633/go.mod h1:iretC4Lq1E35XDkqJyLVk1c/6Y5VXhAAgwY2OOiMOgY=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604124153-9888a07e51fa h1:0tTxRJnkQuDeSnFa4ugm1g46ftuO7ab/u9giw9I/PS4=
@@ -191,12 +203,22 @@ github.com/nuts-foundation/nuts-go v0.0.0-20190531110251-4cdd6f59cf74/go.mod h1:
 github.com/nuts-foundation/nuts-go v0.0.0-20190531110941-7bd66b2a4cfb/go.mod h1:DKfoD7i0DzeSzOE88mW9+owHiVrrqxLlS93exa+ezBQ=
 github.com/nuts-foundation/nuts-go v0.0.0-20190603140836-fb0085c3f6a1 h1:sb+QQgjawqr0r1GN07uokTAm071q7vV+fwe2T+/SAEQ=
 github.com/nuts-foundation/nuts-go v0.0.0-20190603140836-fb0085c3f6a1/go.mod h1:bLcIHPwO8W6uca+zxdPYnzWduqhXWRenBCwwAPrGJXI=
+github.com/nuts-foundation/nuts-go v0.0.0-20190604084440-594a4f1f6af9/go.mod h1:aJy0yVan+hdcaNA5IkJYeO70bmwrvhjW3pbaxjGmYa0=
+github.com/nuts-foundation/nuts-go v0.0.0-20190604113359-b6e37299e8f2 h1:zMOrVASY96Ocm5SKfsVXxpzXUqBCVAEnzLJeHoXWaXo=
+github.com/nuts-foundation/nuts-go v0.0.0-20190604113359-b6e37299e8f2/go.mod h1:aJy0yVan+hdcaNA5IkJYeO70bmwrvhjW3pbaxjGmYa0=
+github.com/nuts-foundation/nuts-go v0.0.0-20190605131758-84e2bae8f7d8 h1:tJgJMnw1xlT32FW5QGYw4hPdNqbnUTimI/AmjhUwMJ0=
+github.com/nuts-foundation/nuts-go v0.0.0-20190605131758-84e2bae8f7d8/go.mod h1:QWo++qFQ8B+WGzWyk4+lbAeWXEWIKVfQsjQYwD3X1WU=
+github.com/nuts-foundation/nuts-go v0.0.0-20190605191956-4b5b466a80be h1:degHNogb1nF5WyS1MKPeALSmnTugq8j5bzjTY2595H8=
+github.com/nuts-foundation/nuts-go v0.0.0-20190605191956-4b5b466a80be/go.mod h1:QWo++qFQ8B+WGzWyk4+lbAeWXEWIKVfQsjQYwD3X1WU=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190528080114-6638f71662f0 h1:/0O8ZDiwJ6dLuUip/8HoiZkbtxmRLq3ZwrHIL9Dwkps=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190528080114-6638f71662f0/go.mod h1:a79KRbnpz5NRiMnLBmmMOIg7JTCz2vq4DlJxtyvexRo=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190604085128-2ee05f3cb03a h1:Lb/biYIZwhBIGFDQYh1708hKwrr83bI4f6Jcmy1Pjp8=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190604085128-2ee05f3cb03a/go.mod h1:jjsf4HjBKwKlMVU/yX0F8s+k4AlPDZtpxfSSsJBaBMY=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190605083710-5bf16300f157 h1:Ssy2NgrkNW7ERgA7jgrb8n+igqWfJ8f+iV8XsBRXBTw=
 github.com/nuts-foundation/nuts-registry v0.0.0-20190605083710-5bf16300f157/go.mod h1:YSYBCKwFdxbaDf9/m+ls53l7Q+xcBBA3VEpT52QEn5A=
+github.com/nuts-foundation/nuts-registry v0.0.0-20190605124747-4f6a4a9c0dc4 h1:eKzuRzJZvAB5Xq6TDek134f4/mMRHKQSO5MNreeSHUU=
+github.com/nuts-foundation/nuts-registry v0.0.0-20190605124747-4f6a4a9c0dc4/go.mod h1:RsGUOK2Ki/FNqzyLNnduLo2omjzo1B5O1qAWdW+o+Zc=
+github.com/nuts-foundation/nuts-registry v0.0.0-20190605125024-4473016345a3 h1:qdAVL4hsYa4OogiBISe+7cCjepNvRGXPBqZqKPw4O2c=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
@@ -223,6 +245,8 @@ github.com/shopspring/decimal v0.0.0-20180709203117-cd690d0c9e24/go.mod h1:M+9Nz
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1 h1:GL2rEmy6nsikmW0r8opw9JIRScdMF5hA8cOYLH7In1k=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
+github.com/sirupsen/logrus v1.4.2 h1:SPIRibHv4MatM3XXNO2BJeFLZwZ2LvZgfQ5+UNI2im4=
+github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=
 github.com/spf13/afero v1.1.2 h1:m8/z1t7/fwjysjQRYbP0RD+bUIF/8tJwPdEZsI83ACI=
 github.com/spf13/afero v1.1.2/go.mod h1:j4pytiNVoe2o6bmDsKpLACNPDBIoEAkihy7loJ1B0CQ=
 github.com/spf13/cast v1.3.0 h1:oget//CVOEoFewqQxwr0Ej5yjygnqGkvggSE/gB35Q8=
@@ -310,6 +334,7 @@ golang.org/x/sys v0.0.0-20190403152447-81d4e9dc473e/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190411185658-b44545bcd369/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d h1:+R4KGOnez64A81RvjARKc4UT5/tI9ujCIVX+P5KiHuI=
 golang.org/x/sys v0.0.0-20190412213103-97732733099d/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20190426135247-a129542de9ae h1:mQLHiymj/JXKnnjc62tb7nD5pZLs940/sXJu+Xp3DBA=
 golang.org/x/sys v0.0.0-20190426135247-a129542de9ae/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0 h1:g61tztE5qeGQ89tm6NTjjM9VPIm088od1l6aSorWRWg=

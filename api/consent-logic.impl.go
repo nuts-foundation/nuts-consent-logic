@@ -23,10 +23,9 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
-	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg"
-	"github.com/nuts-foundation/nuts-registry/pkg/registry"
+	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
+	"github.com/nuts-foundation/nuts-registry/client"
 	"net/http"
-	"time"
 )
 
 // Wrapper provides the implementation of the generated ServerInterface
@@ -91,8 +90,7 @@ func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	}
 	{
 		var err error
-		// TODO: registry address should be provided by the registry.host and registry.port cli params
-		registryClient := registry.HttpClient{ServerAddress: "http://localhost:1323", Timeout: 100 * time.Millisecond}
+		registryClient := client.NewRegistryClient()
 		if encryptedConsent, err = steps.EncryptFhirConsent(registryClient, fhirConsent, *createConsentRequest); err != nil {
 			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("Could not encrypt consent resource for all involved parties: %v", err))
 		}

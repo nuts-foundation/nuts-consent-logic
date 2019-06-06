@@ -44,6 +44,10 @@ func (cl ConsentLogic) StartConsentFlow() {
 	log.Debug("starting consent flow")
 }
 
+func (ConsentLogic) Configure() error {
+	return nil
+}
+
 func (ConsentLogic) Start() error {
 	// Stub
 	return nil

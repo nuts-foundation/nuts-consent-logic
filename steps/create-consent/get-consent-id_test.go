@@ -20,8 +20,8 @@ package steps
 
 import (
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	types "github.com/nuts-foundation/nuts-crypto/pkg"
-	"github.com/nuts-foundation/nuts-crypto/pkg/crypto"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"testing"
 )
 
