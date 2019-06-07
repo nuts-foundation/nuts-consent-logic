@@ -26,8 +26,7 @@ import (
 )
 
 // GetConsentId returns the consentId corresponding to the combinations of the subject and the custodian
-func GetConsentId(request pkg.CreateConsentRequest) (string, error) {
-	cClient := crypto.NewCryptoClient()
+func GetConsentId(cClient crypto.Client, request pkg.CreateConsentRequest) (string, error) {
 	subject := request.Subject
 	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
 

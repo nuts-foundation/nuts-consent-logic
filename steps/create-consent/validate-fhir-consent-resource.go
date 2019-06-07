@@ -29,6 +29,7 @@ func ValidateFhirConsentResource(consentResource string) (bool, error) {
 	valid, errors, err := validationClient.ValidateAgainstSchema([]byte(consentResource))
 	if !valid {
 		fmt.Println(errors, err)
+		fmt.Print(consentResource)
 	}
 	return valid, err
 }

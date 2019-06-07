@@ -27,7 +27,7 @@ import (
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 )
 
-func EncryptFhirConsent(registryClient registry.RegistryClient, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
+func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient crypto.Client, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
 	// list of PEM encoded pubic keys to encrypt the record
 	var partyKeys []string
 
@@ -42,6 +42,5 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, fhirConsent stri
 		log.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}
-	cClient := crypto.NewCryptoClient()
-	return cClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
+	return cryptoClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
 }

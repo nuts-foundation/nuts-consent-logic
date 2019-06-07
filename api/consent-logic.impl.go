@@ -24,7 +24,6 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
-	"github.com/nuts-foundation/nuts-registry/client"
 	"net/http"
 )
 
@@ -34,8 +33,8 @@ type Wrapper struct {
 }
 
 // NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
-func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
-	createConsentApiRequest := new(CreateConsentRequest)
+func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
+	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshall json body:", err)
 		return err
@@ -46,21 +45,29 @@ func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	{
 		createConsentRequest.Custodian = pkg.IdentifierURI(createConsentApiRequest.Custodian)
 		createConsentRequest.Subject = pkg.IdentifierURI(createConsentApiRequest.Subject)
-		performer := pkg.IdentifierURI(*createConsentApiRequest.Performer)
-		createConsentRequest.Performer = &performer
+
+		var performer pkg.IdentifierURI
+		if createConsentApiRequest.Performer != nil {
+			performer = pkg.IdentifierURI(*createConsentApiRequest.Performer)
+			createConsentRequest.Performer = &performer
+		}
 
 		for _, actor := range createConsentApiRequest.Actors {
 			createConsentRequest.Actors = append(createConsentRequest.Actors, pkg.IdentifierURI(actor))
 		}
 
-		consentProof := &pkg.EmbeddedData{
-			ContentType: createConsentApiRequest.ConsentProof.ContentType,
-			Data:        createConsentApiRequest.ConsentProof.ContentType,
+		if len(createConsentApiRequest.ConsentProof.Data) > 0 {
+			consentProof := &pkg.EmbeddedData{
+				ContentType: createConsentApiRequest.ConsentProof.ContentType,
+				Data:        createConsentApiRequest.ConsentProof.ContentType,
+			}
+			createConsentRequest.ConsentProof = consentProof
 		}
-		createConsentRequest.ConsentProof = consentProof
 
-		period := pkg.Period{Start: createConsentApiRequest.Period.Start, End: createConsentApiRequest.Period.End}
-		createConsentRequest.Period = &period
+		if createConsentApiRequest.Period != nil {
+			period := pkg.Period{Start: createConsentApiRequest.Period.Start, End: createConsentApiRequest.Period.End}
+			createConsentRequest.Period = &period
+		}
 	}
 
 	var fhirConsent string
@@ -72,7 +79,7 @@ func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 		}
 	}
 	{
-		if res, err := steps.GetConsentId(*createConsentRequest); res == "" || err != nil {
+		if res, err := steps.GetConsentId(wrapper.Cl.NutsCrypto, *createConsentRequest); res == "" || err != nil {
 			fmt.Println(err)
 			return ctx.JSON(http.StatusBadRequest, "Could not create the consentId for this combination of subject and custodian")
 		}
@@ -90,14 +97,13 @@ func (Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	}
 	{
 		var err error
-		registryClient := client.NewRegistryClient()
-		if encryptedConsent, err = steps.EncryptFhirConsent(registryClient, fhirConsent, *createConsentRequest); err != nil {
+		if encryptedConsent, err = steps.EncryptFhirConsent(wrapper.Cl.NutsRegistry,wrapper.Cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
 			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("Could not encrypt consent resource for all involved parties: %v", err))
 		}
 		fmt.Println(encryptedConsent)
 	}
 
-	return ctx.JSON(http.StatusOK, createConsentRequest)
+	return ctx.JSON(http.StatusAccepted, createConsentRequest)
 }
 
 // NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the

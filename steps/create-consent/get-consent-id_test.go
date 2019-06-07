@@ -37,7 +37,7 @@ func TestGetConsentId(t *testing.T) {
 		{
 			"it generates a externalId",
 			args{
-				request: pkg.CreateConsentRequest{Custodian: "agb#00000001"},
+				request: pkg.CreateConsentRequest{Custodian: "agb#00000012"},
 			},
 			false,
 		},
@@ -48,7 +48,7 @@ func TestGetConsentId(t *testing.T) {
 			cClient := crypto.NewCryptoClient()
 			cClient.GenerateKeyPairFor(types.LegalEntity{URI: string(tt.args.request.Custodian)})
 
-			got, err := GetConsentId(tt.args.request)
+			got, err := GetConsentId(cClient,tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("GetConsentId() error = %v, wantErr %v", err, tt.wantErr)
 				return

@@ -57,7 +57,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			Custodian: pkg.IdentifierURI(custodianId),
 		}
 
-		encryptedContent, err := EncryptFhirConsent(registryClient, string(validConsent), request)
+		encryptedContent, err := EncryptFhirConsent(registryClient, cryptoClient, string(validConsent), request)
 
 		if err != nil {
 			t.Errorf("EncryptFhirConsent() error = %v", err)

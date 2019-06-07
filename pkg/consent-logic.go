@@ -20,6 +20,9 @@ package pkg
 
 import (
 	"github.com/labstack/gommon/log"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-registry/client"
+	"github.com/nuts-foundation/nuts-registry/pkg"
 	"sync"
 )
 
@@ -27,7 +30,9 @@ type ConsentLogicConfig struct {
 }
 
 type ConsentLogic struct {
-	Config ConsentLogicConfig
+	NutsRegistry pkg.RegistryClient
+	NutsCrypto   crypto.Client
+	Config       ConsentLogicConfig
 }
 
 var instance *ConsentLogic
@@ -35,7 +40,8 @@ var oneEngine sync.Once
 
 func ConsentLogicInstance() *ConsentLogic {
 	oneEngine.Do(func() {
-		instance = &ConsentLogic{}
+		instance = &ConsentLogic{
+		}
 	})
 	return instance
 }
@@ -48,8 +54,9 @@ func (ConsentLogic) Configure() error {
 	return nil
 }
 
-func (ConsentLogic) Start() error {
-	// Stub
+func (cl *ConsentLogic) Start() error {
+	cl.NutsCrypto = crypto.NewCryptoClient()
+	cl.NutsRegistry = client.NewRegistryClient()
 	return nil
 }
 

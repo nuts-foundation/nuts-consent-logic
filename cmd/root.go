@@ -32,8 +32,6 @@ import (
 	"strings"
 )
 
-var e = engine.NewConsentLogicEngine()
-var rootCommand = e.Cmd
 
 var serveCommand = &cobra.Command{
 	Use:   "serve",
@@ -54,40 +52,47 @@ var (
 )
 
 func init() {
-	serveCommand.Flags().StringVar(&serverInterface, confInterface, "localhost", "Server interface binding")
-	serveCommand.Flags().IntVarP(&serverPort, confPort, "p", 1324, "Server listen port")
-	rootCommand.AddCommand(serveCommand)
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	c := nutsgo.NutsConfig()
-	c.IgnoredPrefixes = append(c.IgnoredPrefixes, e.ConfigKey)
-	c.RegisterFlags(rootCommand, e)
+	nutsConfig := nutsgo.NutsConfig()
 
-	reg := engine2.NewRegistryEngine()
-	c.RegisterFlags(rootCommand, reg)
+	var consentLogicEngine = engine.NewConsentLogicEngine()
 
-	if err := c.Load(rootCommand); err != nil {
+	var rootCommand = consentLogicEngine.Cmd
+	serveCommand.Flags().StringVar(&serverInterface, confInterface, "localhost", "Server interface binding")
+	serveCommand.Flags().IntVarP(&serverPort, confPort, "p", 1324, "Server listen port")
+	rootCommand.AddCommand(serveCommand)
+
+	nutsConfig.IgnoredPrefixes = append(nutsConfig.IgnoredPrefixes, consentLogicEngine.ConfigKey)
+	nutsConfig.RegisterFlags(rootCommand, consentLogicEngine)
+
+	registryEngine := engine2.NewRegistryEngine()
+	nutsConfig.RegisterFlags(rootCommand, registryEngine)
+
+	if err := nutsConfig.Load(rootCommand); err != nil {
 		panic(err)
 	}
 
-	c.PrintConfig()
+	nutsConfig.PrintConfig()
 
-	if err := c.InjectIntoEngine(e); err != nil {
+	if err := nutsConfig.InjectIntoEngine(consentLogicEngine); err != nil {
 		panic(err)
 	}
 
-	if err := c.InjectIntoEngine(reg); err != nil {
+	if err := nutsConfig.InjectIntoEngine(registryEngine); err != nil {
 		panic(err)
 	}
 
-	if err := e.Configure(); err != nil {
+	if err := consentLogicEngine.Configure(); err != nil {
 		panic(err)
 	}
 
-	if err := reg.Configure(); err != nil {
+	consentLogicEngine.Start()
+
+	if err := registryEngine.Configure(); err != nil {
 		panic(err)
 	}
 

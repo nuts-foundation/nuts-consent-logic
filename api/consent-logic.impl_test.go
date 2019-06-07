@@ -19,51 +19,72 @@
 package api
 
 import (
+	"encoding/json"
+	"github.com/golang/mock/gomock"
+	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	cryptoMock "github.com/nuts-foundation/nuts-crypto/mock"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/types"
+	registryMock "github.com/nuts-foundation/nuts-registry/mock"
+	registry "github.com/nuts-foundation/nuts-registry/pkg"
+	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	"net/http"
 	"testing"
+	"time"
 
-	"github.com/labstack/echo/v4"
+	"github.com/nuts-foundation/nuts-go/mock"
 )
 
 func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
-	type args struct {
-		ctx echo.Context
-	}
-	tests := []struct {
-		name    string
-		a       Wrapper
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := Wrapper{}
-			if err := a.NutsConsentLogicCreateConsent(tt.args.ctx); (err != nil) != tt.wantErr {
-				t.Errorf("Wrapper.NutsConsentLogicCreateConsent() error = %v, wantErr %v", err, tt.wantErr)
-			}
+	t.Run("It start a consent flow", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+
+		registryMock := registryMock.NewMockRegistryClient(ctrl)
+		cryptoMock := cryptoMock.NewMockClient(ctrl)
+
+		publicKey := "123"
+
+		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
+		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
+		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+
+		apiWrapper := wrapper(registryMock, cryptoMock)
+		defer ctrl.Finish()
+		echoServer := mock.NewMockContext(ctrl)
+
+		performer := IdentifierURI("agb:00000007")
+
+		// provide the request
+		jsonRequest := &CreateConsentRequest{
+			Actors:    []ActorURI{"agb:00000001", "agb:00000002"},
+			Custodian: CustodianURI("agb:00000007"),
+			Subject:   SubjectURI("bsn:99999990"),
+			Period:    &Period{Start: time.Now(), End: time.Now()},
+			Performer: &performer,
+		}
+
+		jsonData, _ := json.Marshal(*jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			json.Unmarshal(jsonData, f)
 		})
+
+		// setup response expectation
+		echoServer.EXPECT().JSON(http.StatusAccepted, gomock.Any())
+
+		apiWrapper.NutsConsentLogicCreateConsent(echoServer)
+	})
+}
+
+func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client) *Wrapper {
+	return &Wrapper{
+		Cl: &pkg.ConsentLogic{
+			NutsRegistry: registryClient,
+			NutsCrypto:   cryptoClient,
+		},
 	}
 }
 
 func TestApiResource_NutsConsentLogicValidateConsent(t *testing.T) {
-	type args struct {
-		ctx echo.Context
-	}
-	tests := []struct {
-		name    string
-		a       Wrapper
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			a := Wrapper{}
-			if err := a.NutsConsentLogicValidateConsent(tt.args.ctx); (err != nil) != tt.wantErr {
-				t.Errorf("Wrapper.NutsConsentLogicValidateConsent() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
 }

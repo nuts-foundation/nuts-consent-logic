@@ -10,7 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.1.5
 	github.com/labstack/gommon v0.2.8
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nuts-foundation/nuts-crypto v0.0.0-20190605125317-682a94b249fa
+	github.com/nuts-foundation/nuts-crypto v0.0.0-20190606084109-49f599978237
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd
 	github.com/nuts-foundation/nuts-go v0.0.0-20190605191956-4b5b466a80be
 	github.com/nuts-foundation/nuts-registry v0.0.0-20190605124747-4f6a4a9c0dc4
