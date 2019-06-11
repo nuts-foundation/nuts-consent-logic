@@ -68,8 +68,9 @@ func cmd() *cobra.Command {
 			return nil
 		},
 		Run: func(cmd *cobra.Command, args []string) {
-			clc := pkg.NewConsentLogicClient()
-			clc.StartConsentFlow()
+			//clc := pkg.NewConsentLogicClient()
+			//clc.StartConsentFlow()
+			panic("Todo: implement")
 		},
 	})
 	return cmd

@@ -16,20 +16,9 @@
  *
  */
 
-package steps
 
-import (
-	"fmt"
-	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg"
-)
+package pkg
 
-func ValidateFhirConsentResource(consentResource string) (bool, error) {
-	validationClient := validationEngine.NewValidatorClient()
-
-	valid, errors, err := validationClient.ValidateAgainstSchema([]byte(consentResource))
-	if !valid {
-		fmt.Println(errors, err)
-		fmt.Print(consentResource)
-	}
-	return valid, err
+func CustodianIsKnown(request CreateConsentRequest) (bool, error) {
+	return true, nil
 }

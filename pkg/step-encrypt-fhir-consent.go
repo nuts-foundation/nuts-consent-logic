@@ -16,18 +16,17 @@
  *
  */
 
-package steps
+package pkg
 
 import (
 	"fmt"
 	"github.com/labstack/gommon/log"
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 )
 
-func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient crypto.Client, fhirConsent string, request pkg.CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
+func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient crypto.Client, fhirConsent string, request CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
 	// list of PEM encoded pubic keys to encrypt the record
 	var partyKeys []string
 

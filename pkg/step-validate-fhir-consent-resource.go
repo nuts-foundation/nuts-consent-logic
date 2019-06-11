@@ -16,12 +16,21 @@
  *
  */
 
-package steps
+
+package pkg
 
 import (
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	"fmt"
+	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg"
 )
 
-func CustodianIsKnown(request pkg.CreateConsentRequest) (bool, error) {
-	return true, nil
+func ValidateFhirConsentResource(consentResource string) (bool, error) {
+	validationClient := validationEngine.NewValidatorClient()
+
+	valid, errors, err := validationClient.ValidateAgainstSchema([]byte(consentResource))
+	if !valid {
+		fmt.Println(errors, err)
+		fmt.Print(consentResource)
+	}
+	return valid, err
 }

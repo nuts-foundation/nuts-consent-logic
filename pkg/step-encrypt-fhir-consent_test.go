@@ -16,11 +16,10 @@
  *
  */
 
-package steps
+package pkg
 
 import (
 	"github.com/golang/mock/gomock"
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	types "github.com/nuts-foundation/nuts-crypto/pkg"
 	types2 "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-registry/mock"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestEncryptFhirConsent(t *testing.T) {
-	validConsent, err := ioutil.ReadFile("../../test-data/valid-consent.json")
+	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 	if err != nil {
 		t.Error(err)
 	}
@@ -50,11 +49,11 @@ func TestEncryptFhirConsent(t *testing.T) {
 		registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
 		registryClient.EXPECT().OrganizationById(gomock.Eq(party2Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
 
-		request := pkg.CreateConsentRequest{
-			Actors: []pkg.IdentifierURI{
-				pkg.IdentifierURI(party1Id), pkg.IdentifierURI(party2Id),
+		request := CreateConsentRequest{
+			Actors: []IdentifierURI{
+				IdentifierURI(party1Id), IdentifierURI(party2Id),
 			},
-			Custodian: pkg.IdentifierURI(custodianId),
+			Custodian: IdentifierURI(custodianId),
 		}
 
 		encryptedContent, err := EncryptFhirConsent(registryClient, cryptoClient, string(validConsent), request)

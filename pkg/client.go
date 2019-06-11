@@ -18,11 +18,6 @@
 
 package pkg
 
-type ConsentLogicClient interface {
-	StartConsentFlow()
-
-}
-
 func NewConsentLogicClient() ConsentLogicClient {
 	return ConsentLogicInstance()
 }

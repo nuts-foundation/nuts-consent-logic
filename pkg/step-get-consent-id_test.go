@@ -16,10 +16,11 @@
  *
  */
 
-package steps
+
+
+package pkg
 
 import (
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"testing"
@@ -27,7 +28,7 @@ import (
 
 func TestGetConsentId(t *testing.T) {
 	type args struct {
-		request pkg.CreateConsentRequest
+		request CreateConsentRequest
 	}
 	tests := []struct {
 		name    string
@@ -37,7 +38,7 @@ func TestGetConsentId(t *testing.T) {
 		{
 			"it generates a externalId",
 			args{
-				request: pkg.CreateConsentRequest{Custodian: "agb#00000012"},
+				request: CreateConsentRequest{Custodian: "agb#00000012"},
 			},
 			false,
 		},

@@ -16,17 +16,18 @@
  *
  */
 
-package steps
+
+
+package pkg
 
 import (
 	"encoding/hex"
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 )
 
 // GetConsentId returns the consentId corresponding to the combinations of the subject and the custodian
-func GetConsentId(cClient crypto.Client, request pkg.CreateConsentRequest) (string, error) {
+func GetConsentId(cClient crypto.Client, request CreateConsentRequest) (string, error) {
 	subject := request.Subject
 	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
 

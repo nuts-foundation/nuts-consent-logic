@@ -19,11 +19,8 @@
 package api
 
 import (
-	"fmt"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	"github.com/nuts-foundation/nuts-consent-logic/steps/create-consent"
-	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"net/http"
 )
 
@@ -36,71 +33,14 @@ type Wrapper struct {
 func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
-		ctx.Logger().Error("Could not unmarshall json body:", err)
+		ctx.Logger().Error("Could not unmarshal json body:", err)
 		return err
 	}
 
-	//convert api type to internal type
-	createConsentRequest := &pkg.CreateConsentRequest{}
-	{
-		createConsentRequest.Custodian = pkg.IdentifierURI(createConsentApiRequest.Custodian)
-		createConsentRequest.Subject = pkg.IdentifierURI(createConsentApiRequest.Subject)
+	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
 
-		var performer pkg.IdentifierURI
-		if createConsentApiRequest.Performer != nil {
-			performer = pkg.IdentifierURI(*createConsentApiRequest.Performer)
-			createConsentRequest.Performer = &performer
-		}
-
-		for _, actor := range createConsentApiRequest.Actors {
-			createConsentRequest.Actors = append(createConsentRequest.Actors, pkg.IdentifierURI(actor))
-		}
-
-		if len(createConsentApiRequest.ConsentProof.Data) > 0 {
-			consentProof := &pkg.EmbeddedData{
-				ContentType: createConsentApiRequest.ConsentProof.ContentType,
-				Data:        createConsentApiRequest.ConsentProof.ContentType,
-			}
-			createConsentRequest.ConsentProof = consentProof
-		}
-
-		if createConsentApiRequest.Period != nil {
-			period := pkg.Period{Start: createConsentApiRequest.Period.Start, End: createConsentApiRequest.Period.End}
-			createConsentRequest.Period = &period
-		}
-	}
-
-	var fhirConsent string
-	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
-
-	{
-		if res, err := steps.CustodianIsKnown(*createConsentRequest); !res || err != nil {
-			return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
-		}
-	}
-	{
-		if res, err := steps.GetConsentId(wrapper.Cl.NutsCrypto, *createConsentRequest); res == "" || err != nil {
-			fmt.Println(err)
-			return ctx.JSON(http.StatusBadRequest, "Could not create the consentId for this combination of subject and custodian")
-		}
-	}
-	{
-		var err error
-		if fhirConsent, err = steps.CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
-			return ctx.JSON(http.StatusBadRequest, "Could not create the FHIR consent resource")
-		}
-	}
-	{
-		if validationResult, err := steps.ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("The generated FHIR consent resource is invalid: %v", err))
-		}
-	}
-	{
-		var err error
-		if encryptedConsent, err = steps.EncryptFhirConsent(wrapper.Cl.NutsRegistry,wrapper.Cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			return ctx.JSON(http.StatusBadRequest, fmt.Sprintf("Could not encrypt consent resource for all involved parties: %v", err))
-		}
-		fmt.Println(encryptedConsent)
+	if err := wrapper.Cl.StartConsentFlow(createConsentRequest); err != nil {
+		return ctx.JSON(http.StatusBadRequest, err)
 	}
 
 	return ctx.JSON(http.StatusAccepted, createConsentRequest)
@@ -111,4 +51,37 @@ func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 // and responds with the signatures to the consent-bridge
 func (Wrapper) NutsConsentLogicValidateConsent(ctx echo.Context) error {
 	panic("implement me")
+}
+
+// Convert the public generated data type to the internal type.
+// This abstraction makes the app more robust to api changes.
+func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequest {
+	//convert api type to internal type
+	createConsentRequest := &pkg.CreateConsentRequest{}
+	createConsentRequest.Custodian = pkg.IdentifierURI(apiRequest.Custodian)
+	createConsentRequest.Subject = pkg.IdentifierURI(apiRequest.Subject)
+
+	var performer pkg.IdentifierURI
+	if apiRequest.Performer != nil {
+		performer = pkg.IdentifierURI(*apiRequest.Performer)
+		createConsentRequest.Performer = &performer
+	}
+
+	for _, actor := range apiRequest.Actors {
+		createConsentRequest.Actors = append(createConsentRequest.Actors, pkg.IdentifierURI(actor))
+	}
+
+	if len(apiRequest.ConsentProof.Data) > 0 {
+		consentProof := &pkg.EmbeddedData{
+			ContentType: apiRequest.ConsentProof.ContentType,
+			Data:        apiRequest.ConsentProof.ContentType,
+		}
+		createConsentRequest.ConsentProof = consentProof
+	}
+
+	if apiRequest.Period != nil {
+		period := pkg.Period{Start: apiRequest.Period.Start, End: apiRequest.Period.End}
+		createConsentRequest.Period = &period
+	}
+	return createConsentRequest
 }

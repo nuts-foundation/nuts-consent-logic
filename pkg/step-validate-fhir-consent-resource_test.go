@@ -16,19 +16,17 @@
  *
  */
 
-package steps
+
+
+package pkg
 
 import (
-	validationEngine "github.com/nuts-foundation/nuts-fhir-validation/pkg"
-	"github.com/spf13/viper"
 	"io/ioutil"
 	"testing"
 )
 
 func Test_validateFhirConsentResource(t *testing.T) {
-	viper.Set(validationEngine.ConfigSchemaPath, "../../schema/fhir.schema.json")
-
-	validConsent, err := ioutil.ReadFile("../../test-data/valid-consent.json")
+	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 	if err != nil {
 		t.Error(err)
 	}

@@ -16,11 +16,12 @@
  *
  */
 
-package steps
+
+
+package pkg
 
 import (
 	"github.com/cbroglie/mustache"
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"regexp"
 	"strings"
 	"time"
@@ -147,7 +148,7 @@ func valueFromUrn(urn string) string {
 	return segments[len(segments)-1]
 }
 
-func CreateFhirConsentResource(request pkg.CreateConsentRequest) (string, error) {
+func CreateFhirConsentResource(request CreateConsentRequest) (string, error) {
 
 	var actorAgbs []string
 	for _, actor := range request.Actors {

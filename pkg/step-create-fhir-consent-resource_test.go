@@ -16,11 +16,10 @@
  *
  */
 
-package steps
+package pkg
 
 import (
 	"encoding/json"
-	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"io/ioutil"
 	"reflect"
 	"testing"
@@ -29,15 +28,15 @@ import (
 
 func TestCreateFhirConsentResource(t *testing.T) {
 	type args struct {
-		request pkg.CreateConsentRequest
+		request CreateConsentRequest
 	}
 
-	validConsent, err := ioutil.ReadFile("../../test-data/valid-consent.json")
+	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 	if err != nil {
 		t.Error(err)
 	}
 
-	performerId := pkg.IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.3:00000003")
+	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.3:00000003")
 
 	tests := []struct {
 		name    string
@@ -48,18 +47,18 @@ func TestCreateFhirConsentResource(t *testing.T) {
 		{
 			"it can create a valid consent",
 			args{
-				pkg.CreateConsentRequest{
+				CreateConsentRequest{
 					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.1:999999990",
 					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.3:00000000",
-					Actors: []pkg.IdentifierURI{
+					Actors: []IdentifierURI{
 						"urn:oid:2.16.840.1.113883.2.4.6.3:00000001",
 						"urn:oid:2.16.840.1.113883.2.4.6.3:00000002",
 					},
-					Period: &pkg.Period{
+					Period: &Period{
 						Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
 						End:   time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC),
 					},
-					ConsentProof: &pkg.EmbeddedData{
+					ConsentProof: &EmbeddedData{
 						Data:        "dhklauHAELrlg78OLg==",
 						ContentType: "application/pdf",
 					},
