@@ -6,11 +6,15 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
+	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 )
@@ -62,6 +66,90 @@ type Period struct {
 
 // SubjectURI defines component schema for SubjectURI.
 type SubjectURI string
+
+// Client which conforms to the OpenAPI3 specification for this service. The
+// server should be fully qualified with shema and server, ie,
+// https://deepmap.com.
+type Client struct {
+	Server string
+	Client http.Client
+}
+
+// NutsConsentLogicCreateConsent request with JSON body
+func (c *Client) NutsConsentLogicCreateConsent(ctx context.Context, body CreateConsentRequest) (*http.Response, error) {
+	req, err := NewNutsConsentLogicCreateConsentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	return c.Client.Do(req)
+}
+
+// NutsConsentLogicValidateConsent request with JSON body
+func (c *Client) NutsConsentLogicValidateConsent(ctx context.Context, body ConsentValidationRequest) (*http.Response, error) {
+	req, err := NewNutsConsentLogicValidateConsentRequest(c.Server, body)
+	if err != nil {
+		return nil, err
+	}
+	req = req.WithContext(ctx)
+	return c.Client.Do(req)
+}
+
+// NewNutsConsentLogicCreateConsentRequest generates requests for NutsConsentLogicCreateConsent with JSON body
+func NewNutsConsentLogicCreateConsentRequest(server string, body CreateConsentRequest) (*http.Request, error) {
+	var bodyReader io.Reader
+
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+
+	return NewNutsConsentLogicCreateConsentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewNutsConsentLogicCreateConsentRequestWithBody generates requests for NutsConsentLogicCreateConsent with non-JSON body
+func NewNutsConsentLogicCreateConsentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	queryURL := fmt.Sprintf("%s/api/consent", server)
+
+	req, err := http.NewRequest("POST", queryURL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+	return req, nil
+}
+
+// NewNutsConsentLogicValidateConsentRequest generates requests for NutsConsentLogicValidateConsent with JSON body
+func NewNutsConsentLogicValidateConsentRequest(server string, body ConsentValidationRequest) (*http.Request, error) {
+	var bodyReader io.Reader
+
+	buf, err := json.Marshal(body)
+	if err != nil {
+		return nil, err
+	}
+	bodyReader = bytes.NewReader(buf)
+
+	return NewNutsConsentLogicValidateConsentRequestWithBody(server, "application/json", bodyReader)
+}
+
+// NewNutsConsentLogicValidateConsentRequestWithBody generates requests for NutsConsentLogicValidateConsent with non-JSON body
+func NewNutsConsentLogicValidateConsentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
+	var err error
+
+	queryURL := fmt.Sprintf("%s/api/consent/validation", server)
+
+	req, err := http.NewRequest("POST", queryURL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Content-Type", contentType)
+	return req, nil
+}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
