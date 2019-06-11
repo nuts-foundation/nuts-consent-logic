@@ -13,7 +13,7 @@ require (
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190606084109-49f599978237
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd
 	github.com/nuts-foundation/nuts-go v0.0.0-20190605191956-4b5b466a80be
-	github.com/nuts-foundation/nuts-registry v0.0.0-20190605124747-4f6a4a9c0dc4
+	github.com/nuts-foundation/nuts-registry v0.0.0-20190611124947-2575b63f7dc2
 	github.com/spf13/cobra v0.0.4
 	github.com/spf13/pflag v1.0.3
 	github.com/spf13/viper v1.3.2
