@@ -35,7 +35,11 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		// get public key for actor
 		organization, err := registryClient.OrganizationById(string(actor))
 		if err != nil {
-			fmt.Printf("error while getting public key for actor: %v from registry: %v", actor, err)
+			log.Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
+			return cryptoTypes.DoubleEncryptedCipherText{}, err
+		}
+		if organization.PublicKey == nil {
+			return cryptoTypes.DoubleEncryptedCipherText{}, fmt.Errorf("registry entry for organization %v does not contain a public key", actor)
 		}
 		pk := *organization.PublicKey
 		log.Debug("pk:", pk)

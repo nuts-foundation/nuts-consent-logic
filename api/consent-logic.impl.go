@@ -40,7 +40,7 @@ func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
 
 	if err := wrapper.Cl.StartConsentFlow(createConsentRequest); err != nil {
-		return ctx.JSON(http.StatusBadRequest, err)
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return ctx.JSON(http.StatusAccepted, createConsentRequest)

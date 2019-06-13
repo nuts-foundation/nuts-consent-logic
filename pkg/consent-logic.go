@@ -28,6 +28,7 @@ import (
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
+	"github.com/sirupsen/logrus"
 	"sync"
 )
 
@@ -64,30 +65,34 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
 			return errors.New("custodian is not a known vendor")
 		}
+		logrus.Debug("Custodian is known")
 	}
 	{
 		if res, err := GetConsentId(cl.NutsCrypto, *createConsentRequest); res == "" || err != nil {
 			fmt.Println(err)
 			return errors.New("could not create the consentId for this combination of subject and custodian")
 		}
+		logrus.Debug("ConsentId generated")
 	}
 	{
 		var err error
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
 			return errors.New("could not create the FHIR consent resource")
 		}
+		logrus.Debug("FHIR resource created")
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 			return errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
 		}
+		logrus.Debug("FHIR resource is valid")
 	}
 	{
 		var err error
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
+			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
 		}
-		fmt.Println(encryptedConsent)
+		logrus.Debug("FHIR resource encrypted", encryptedConsent)
 	}
 	{
 		// Fixme: this should not be the the consent store but the consent bridge. But for the current demo, we use this since it is easier to set up.
@@ -104,6 +109,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 				return fmt.Errorf("could not record consent %v", err)
 			}
 		}
+		logrus.Debug("Consent recorded for actor")
 
 	}
 
