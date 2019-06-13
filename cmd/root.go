@@ -25,6 +25,7 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/api"
 	"github.com/nuts-foundation/nuts-consent-logic/engine"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	engine3 "github.com/nuts-foundation/nuts-consent-store/engine"
 	nutsgo "github.com/nuts-foundation/nuts-go/pkg"
 	engine2 "github.com/nuts-foundation/nuts-registry/engine"
 	"github.com/spf13/cobra"
@@ -72,6 +73,9 @@ func Execute() {
 	registryEngine := engine2.NewRegistryEngine()
 	nutsConfig.RegisterFlags(rootCommand, registryEngine)
 
+	consentStoreEngine := engine3.NewConsentStoreEngine()
+	nutsConfig.RegisterFlags(rootCommand, consentStoreEngine)
+
 	if err := nutsConfig.Load(rootCommand); err != nil {
 		panic(err)
 	}
@@ -83,6 +87,10 @@ func Execute() {
 	}
 
 	if err := nutsConfig.InjectIntoEngine(registryEngine); err != nil {
+		panic(err)
+	}
+
+	if err := nutsConfig.InjectIntoEngine(consentStoreEngine); err != nil {
 		panic(err)
 	}
 

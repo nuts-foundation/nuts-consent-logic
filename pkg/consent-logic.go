@@ -19,8 +19,11 @@
 package pkg
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
+	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-registry/client"
@@ -35,9 +38,10 @@ type ConsentLogicClient interface {
 	StartConsentFlow(*CreateConsentRequest) error
 }
 type ConsentLogic struct {
-	NutsRegistry pkg.RegistryClient
-	NutsCrypto   crypto.Client
-	Config       ConsentLogicConfig
+	NutsRegistry     pkg.RegistryClient
+	NutsCrypto       crypto.Client
+	NutsConsentStore cStore.ConsentStoreClient
+	Config           ConsentLogicConfig
 }
 
 var instance *ConsentLogic
@@ -85,6 +89,23 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		}
 		fmt.Println(encryptedConsent)
 	}
+	{
+		// Fixme: this should not be the the consent store but the consent bridge. But for the current demo, we use this since it is easier to set up.
+		ctx := context.Background()
+
+		for _, actor := range createConsentRequest.Actors {
+			consentRule := []cStore.ConsentRule{{
+				Actor: string(actor),
+				Subject: string(createConsentRequest.Subject),
+				Resources: []cStore.Resource{{ResourceType: "Observation"}},
+				Custodian: string(createConsentRequest.Custodian),
+			}}
+			if err := cl.NutsConsentStore.RecordConsent(ctx, consentRule); err != nil {
+				return fmt.Errorf("could not record consent %v", err)
+			}
+		}
+
+	}
 
 	return nil
 }
@@ -96,6 +117,7 @@ func (ConsentLogic) Configure() error {
 func (cl *ConsentLogic) Start() error {
 	cl.NutsCrypto = crypto.NewCryptoClient()
 	cl.NutsRegistry = client.NewRegistryClient()
+	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
 	return nil
 }
 
