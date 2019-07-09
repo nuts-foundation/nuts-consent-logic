@@ -108,7 +108,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			Attachment: string(strutil.Base64Encode(encryptedConsent.CipherText)),
 			ExternalId: consentId,
 			Metadata: bridgeClient.Metadata{
-				Domain: []bridgeClient.Domain{"MEDICAL"},
+				Domain: []bridgeClient.Domain{"medical"},
 				Period: bridgeClient.Period{
 					ValidFrom: createConsentRequest.Period.Start,
 					ValidTo: &createConsentRequest.Period.End,
