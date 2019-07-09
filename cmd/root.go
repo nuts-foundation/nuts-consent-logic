@@ -28,6 +28,7 @@ import (
 	engine3 "github.com/nuts-foundation/nuts-consent-store/engine"
 	nutsgo "github.com/nuts-foundation/nuts-go/pkg"
 	engine2 "github.com/nuts-foundation/nuts-registry/engine"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
@@ -80,7 +81,7 @@ func Execute() {
 		panic(err)
 	}
 
-	nutsConfig.PrintConfig()
+	nutsConfig.PrintConfig(logrus.StandardLogger())
 
 	if err := nutsConfig.InjectIntoEngine(consentLogicEngine); err != nil {
 		panic(err)
