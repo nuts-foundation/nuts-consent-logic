@@ -22,10 +22,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/cznic/strutil"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
+	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	"github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/sirupsen/logrus"
@@ -37,7 +39,9 @@ type ConsentLogicConfig struct {
 
 type ConsentLogicClient interface {
 	StartConsentFlow(*CreateConsentRequest) error
+	HandleConsentRequest(string) error
 }
+
 type ConsentLogic struct {
 	NutsRegistry     pkg.RegistryClient
 	NutsCrypto       crypto.Client
@@ -58,6 +62,7 @@ func ConsentLogicInstance() *ConsentLogic {
 
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
 	var fhirConsent string
+	var consentId string
 	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 
 	{
@@ -68,7 +73,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debug("Custodian is known")
 	}
 	{
-		if res, err := GetConsentId(cl.NutsCrypto, *createConsentRequest); res == "" || err != nil {
+		if consentId, err := GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
 			fmt.Println(err)
 			return errors.New("could not create the consentId for this combination of subject and custodian")
 		}
@@ -95,23 +100,54 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debug("FHIR resource encrypted", encryptedConsent)
 	}
 	{
-		// Fixme: this should not be the the consent store but the consent bridge. But for the current demo, we use this since it is easier to set up.
 		ctx := context.Background()
 
-		for _, actor := range createConsentRequest.Actors {
-			consentRule := []cStore.ConsentRule{{
-				Actor: string(actor),
-				Subject: string(createConsentRequest.Subject),
-				Resources: []cStore.Resource{{ResourceType: "Observation"}},
-				Custodian: string(createConsentRequest.Custodian),
-			}}
-			if err := cl.NutsConsentStore.RecordConsent(ctx, consentRule); err != nil {
-				return fmt.Errorf("could not record consent %v", err)
-			}
-		}
-		logrus.Debug("Consent recorded for actor")
+		bc := bridgeClient.NewConsentBridgeClient()
 
+		state := bridgeClient.NewConsentRequestState{
+			Attachment: string(strutil.Base64Encode(encryptedConsent.CipherText)),
+			ExternalId: consentId,
+			Metadata: bridgeClient.Metadata{
+				Domain: []bridgeClient.Domain{"TODO"},
+				Period: bridgeClient.Period{
+					ValidFrom: createConsentRequest.Period.Start,
+					ValidTo: &createConsentRequest.Period.End,
+				},
+				SecureKey: bridgeClient.SymmetricKey{
+					Alg: "AES_GCM", //todo hardcoded
+					Iv: string(strutil.Base64Encode(encryptedConsent.Nonce)),
+				},
+				OrganisationSecureKeys: []bridgeClient.ASymmetricKey{},
+			},
+		}
+
+		for i := range encryptedConsent.CipherTextKeys {
+			ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
+			state.Metadata.OrganisationSecureKeys = append(state.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
+				CipherText: &ctBase64,
+				LegalEntity: bridgeClient.Identifier(createConsentRequest.Actors[i]),
+			})
+		}
+
+		if err := bc.NewConsentRequestState(ctx, state); err != nil {
+			return errors.New(fmt.Sprintf("sending new consent request state failed: %v", err))
+		}
+
+		logrus.Debug("Consent request send")
 	}
+
+	return nil
+}
+
+func (ConsentLogic) HandleConsentRequest(consentRequestId string) error {
+	// get from bridge
+	bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
+
+	// decrypt
+
+	// check fire
+
+	// auto-ack to bridge with signed message
 
 	return nil
 }
