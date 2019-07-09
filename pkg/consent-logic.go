@@ -141,8 +141,14 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 
 func (ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	// get from bridge
-	bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
+	crs, err := bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
 
+	if err != nil {
+		// have event-octopus handle redelivery or cancellation
+		return err
+	}
+
+	logrus.Debugf("Handling ConsentRequestState: %v", crs)
 	// decrypt
 
 	// check fire
