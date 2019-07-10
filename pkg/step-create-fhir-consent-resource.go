@@ -116,7 +116,9 @@ const template = `
     ],
     "period": {
       "start": "{{period.Start}}",
+{{#period.End}}
       "end": "{{period.End}}"
+{{/period.End}}
     },
     "provision": [
       {
@@ -166,6 +168,12 @@ func CreateFhirConsentResource(request CreateConsentRequest) (string, error) {
 		"consentProof": request.ConsentProof,
 		"performerId":  valueFromUrn(string(*request.Performer)),
 	}
+
+	periodEnd := request.Period.End
+	if periodEnd != nil {
+		(viewModel["period"].(map[string]string))["End"] = periodEnd.Format(time.RFC3339)
+	}
+
 	var (
 		res string
 		err error
