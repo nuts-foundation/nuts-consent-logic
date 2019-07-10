@@ -38,6 +38,8 @@ func TestCreateFhirConsentResource(t *testing.T) {
 
 	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.3:00000003")
 
+	endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
+
 	tests := []struct {
 		name    string
 		args    args
@@ -56,7 +58,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 					},
 					Period: &Period{
 						Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
-						End:   time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC),
+						End:   &endDate,
 					},
 					ConsentProof: &EmbeddedData{
 						Data:        "dhklauHAELrlg78OLg==",

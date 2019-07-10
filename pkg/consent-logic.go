@@ -111,7 +111,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 				Domain: []bridgeClient.Domain{"medical"},
 				Period: bridgeClient.Period{
 					ValidFrom: createConsentRequest.Period.Start,
-					ValidTo: &createConsentRequest.Period.End,
+					ValidTo: createConsentRequest.Period.End,
 				},
 				SecureKey: bridgeClient.SymmetricKey{
 					Alg: "AES_GCM", //todo hardcoded

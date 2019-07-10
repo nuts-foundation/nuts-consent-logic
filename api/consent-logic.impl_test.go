@@ -43,6 +43,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		cryptoMock := cryptoMock.NewMockClient(ctrl)
 
 		publicKey := "123"
+		endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
 		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
@@ -60,7 +61,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 			Actors:    []ActorURI{"agb:00000001", "agb:00000002"},
 			Custodian: CustodianURI("agb:00000007"),
 			Subject:   SubjectURI("bsn:99999990"),
-			Period:    &Period{Start: time.Now(), End: time.Now()},
+			Period:    &Period{Start: time.Now(), End: &endDate},
 			Performer: &performer,
 		}
 
@@ -73,7 +74,11 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 		echoServer.EXPECT().JSON(http.StatusAccepted, gomock.Any())
 
-		apiWrapper.NutsConsentLogicCreateConsent(echoServer)
+		err := apiWrapper.NutsConsentLogicCreateConsent(echoServer)
+
+		if err != nil {
+			t.Errorf("Expected no error, got %v", err)
+		}
 	})
 }
 

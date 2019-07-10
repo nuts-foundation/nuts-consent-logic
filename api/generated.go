@@ -6,15 +6,11 @@ package api
 import (
 	"bytes"
 	"compress/gzip"
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
-	"io"
-	"net/http"
 	"strings"
 	"time"
 )
@@ -60,96 +56,12 @@ type JobCreatedResponse struct {
 
 // Period defines component schema for Period.
 type Period struct {
-	End   time.Time `json:"end"`
-	Start time.Time `json:"start"`
+	End   *time.Time `json:"end,omitempty"`
+	Start time.Time  `json:"start"`
 }
 
 // SubjectURI defines component schema for SubjectURI.
 type SubjectURI string
-
-// Client which conforms to the OpenAPI3 specification for this service. The
-// server should be fully qualified with shema and server, ie,
-// https://deepmap.com.
-type Client struct {
-	Server string
-	Client http.Client
-}
-
-// NutsConsentLogicCreateConsent request with JSON body
-func (c *Client) NutsConsentLogicCreateConsent(ctx context.Context, body CreateConsentRequest) (*http.Response, error) {
-	req, err := NewNutsConsentLogicCreateConsentRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	return c.Client.Do(req)
-}
-
-// NutsConsentLogicValidateConsent request with JSON body
-func (c *Client) NutsConsentLogicValidateConsent(ctx context.Context, body ConsentValidationRequest) (*http.Response, error) {
-	req, err := NewNutsConsentLogicValidateConsentRequest(c.Server, body)
-	if err != nil {
-		return nil, err
-	}
-	req = req.WithContext(ctx)
-	return c.Client.Do(req)
-}
-
-// NewNutsConsentLogicCreateConsentRequest generates requests for NutsConsentLogicCreateConsent with JSON body
-func NewNutsConsentLogicCreateConsentRequest(server string, body CreateConsentRequest) (*http.Request, error) {
-	var bodyReader io.Reader
-
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-
-	return NewNutsConsentLogicCreateConsentRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewNutsConsentLogicCreateConsentRequestWithBody generates requests for NutsConsentLogicCreateConsent with non-JSON body
-func NewNutsConsentLogicCreateConsentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	queryURL := fmt.Sprintf("%s/api/consent", server)
-
-	req, err := http.NewRequest("POST", queryURL, body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-	return req, nil
-}
-
-// NewNutsConsentLogicValidateConsentRequest generates requests for NutsConsentLogicValidateConsent with JSON body
-func NewNutsConsentLogicValidateConsentRequest(server string, body ConsentValidationRequest) (*http.Request, error) {
-	var bodyReader io.Reader
-
-	buf, err := json.Marshal(body)
-	if err != nil {
-		return nil, err
-	}
-	bodyReader = bytes.NewReader(buf)
-
-	return NewNutsConsentLogicValidateConsentRequestWithBody(server, "application/json", bodyReader)
-}
-
-// NewNutsConsentLogicValidateConsentRequestWithBody generates requests for NutsConsentLogicValidateConsent with non-JSON body
-func NewNutsConsentLogicValidateConsentRequestWithBody(server string, contentType string, body io.Reader) (*http.Request, error) {
-	var err error
-
-	queryURL := fmt.Sprintf("%s/api/consent/validation", server)
-
-	req, err := http.NewRequest("POST", queryURL, body)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Add("Content-Type", contentType)
-	return req, nil
-}
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -212,22 +124,22 @@ var swaggerSpec = []string{
 	"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",
-	"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",
+	"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",
 }
 
 // GetSwagger returns the Swagger specification corresponding to the generated code
