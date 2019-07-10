@@ -163,7 +163,6 @@ func CreateFhirConsentResource(request CreateConsentRequest) (string, error) {
 		"custodianAgb": valueFromUrn(string(request.Custodian)),
 		"period": map[string]string{
 			"Start": request.Period.Start.Format(time.RFC3339),
-			"End":   request.Period.End.Format(time.RFC3339),
 		},
 		"consentProof": request.ConsentProof,
 		"performerId":  valueFromUrn(string(*request.Performer)),
