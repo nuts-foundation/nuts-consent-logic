@@ -115,9 +115,9 @@ const template = `
     {{/actorAgbs}}
     ],
     "period": {
-      "start": "{{period.Start}}",
+      "start": "{{period.Start}}"
 {{#period.End}}
-      "end": "{{period.End}}"
+      ,"end": "{{period.End}}"
 {{/period.End}}
     },
     "provision": [
