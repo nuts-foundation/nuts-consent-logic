@@ -61,6 +61,7 @@ func ConsentLogicInstance() *ConsentLogic {
 }
 
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
+	var err error
 	var fhirConsent string
 	var consentId string
 	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
@@ -73,14 +74,13 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debug("Custodian is known")
 	}
 	{
-		if consentId, err := GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
+		if consentId, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
 			fmt.Println(err)
 			return errors.New("could not create the consentId for this combination of subject and custodian")
 		}
 		logrus.Debug("ConsentId generated")
 	}
 	{
-		var err error
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
 			return errors.New("could not create the FHIR consent resource")
 		}
@@ -93,7 +93,6 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debug("FHIR resource is valid")
 	}
 	{
-		var err error
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
 			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
 		}
