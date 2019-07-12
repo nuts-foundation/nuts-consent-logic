@@ -45,5 +45,15 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		logrus.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}
+
+	// and custodian
+	pk, err := cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
+	if err != nil {
+		logrus.Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
+		return cryptoTypes.DoubleEncryptedCipherText{}, err
+	}
+	logrus.Debug("pk:", pk)
+	partyKeys = append(partyKeys, pk)
+
 	return cryptoClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
 }
