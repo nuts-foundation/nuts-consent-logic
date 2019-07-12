@@ -120,13 +120,16 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			},
 		}
 
+		legalEnts := createConsentRequest.Actors
+		legalEnts = append(legalEnts, createConsentRequest.Custodian)
+
 		alg := "RSA-OAEP"
 		for i := range encryptedConsent.CipherTextKeys {
 			ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
 			state.Metadata.OrganisationSecureKeys = append(state.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
 				Alg: &alg,
 				CipherText: &ctBase64,
-				LegalEntity: bridgeClient.Identifier(createConsentRequest.Actors[i]),
+				LegalEntity: bridgeClient.Identifier(legalEnts[i]),
 			})
 		}
 
