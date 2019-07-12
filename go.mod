@@ -11,7 +11,7 @@ require (
 	github.com/labstack/echo/v4 v4.1.5
 	github.com/labstack/gommon v0.2.8
 	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190708190506-eeaa520036c0
+	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190712065958-47766f61ea6b
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190617124857-4b1882c21216
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd

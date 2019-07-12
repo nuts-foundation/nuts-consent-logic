@@ -140,7 +140,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	return nil
 }
 
-func (ConsentLogic) HandleConsentRequest(consentRequestId string) error {
+func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	// get from bridge
 	crs, err := bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
 
@@ -150,11 +150,33 @@ func (ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	}
 
 	logrus.Debugf("Handling ConsentRequestState: %v", crs)
+	// download attachment
+	// extract zip ....
+	// check if *self* signed
+	// check if legalEntity is mine
 	// decrypt
-
 	// check fire
+	// auto-ack to bridge with signed message with missing signatures
 
-	// auto-ack to bridge with signed message
+	var missingSignatures []string
+	var attSignatures map[string]bool
+
+	for _, att := range crs.Signatures {
+		attSignatures[string(att.LegalEntity)] = true
+	}
+
+	for _, ent := range crs.LegalEntities {
+		if !attSignatures[string(ent)] {
+			key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(ent)})
+			if len(key) != 0 {
+				logrus.Debugf("ConsentRequestState with id %v is missing signature for legalEntity %v",crs.ConsentId, ent)
+				missingSignatures = append(missingSignatures,string(ent))
+			}
+		}
+	}
+
+	// update
+	//bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
 
 	return nil
 }
