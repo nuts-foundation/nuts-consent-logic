@@ -33,7 +33,6 @@ import (
 	"github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
 	"sync"
 )
 
@@ -181,23 +180,23 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	// update
 	for _, att := range crs.Attachments {
 
-		attBytes, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
+		_, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
 		if err != nil {
 			logrus.Errorf("Error in downloading attachment with hash [%s]: %v", att, err)
 			continue
 		}
 
 		for _, ent := range missingSignatures {
-			r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
-			dec, err := ioutil.ReadAll(r)
-
-			if err != nil {
-				logrus.Errorf("Error in decoding base64 string: %v", err)
-				continue
-			}
+			//r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
+			//dec, err := ioutil.ReadAll(r)
+			//
+			//if err != nil {
+			//	logrus.Errorf("Error in decoding base64 string: %v", err)
+			//	continue
+			//}
 
 			// todo Sign attachment not its ID
-			sigBytes, err := cl.NutsCrypto.SignFor(dec, cryptoTypes.LegalEntity{URI: ent})
+			sigBytes, err := cl.NutsCrypto.SignFor([]byte(att), cryptoTypes.LegalEntity{URI: ent})
 
 			if err != nil {
 					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
