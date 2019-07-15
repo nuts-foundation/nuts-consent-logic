@@ -133,6 +133,8 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			})
 		}
 
+		logrus.Debugf("Sending NewConsentRequest to bridge: %+v", state)
+
 		if err := bc.NewConsentRequestState(ctx, state); err != nil {
 			return errors.New(fmt.Sprintf("sending new consent request state failed: %v", err))
 		}
