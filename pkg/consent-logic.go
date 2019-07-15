@@ -19,18 +19,21 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"github.com/cznic/strutil"
+	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
-	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	"github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 	"sync"
 )
 
@@ -145,6 +148,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	return nil
 }
 
+// HandleConsentRequest auto-acks ConsentRequests with the missing signatures
 func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	// get from bridge
 	crs, err := bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
@@ -155,13 +159,6 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 	}
 
 	logrus.Debugf("Handling ConsentRequestState: %v", crs)
-	// download attachment
-	// extract zip ....
-	// check if *self* signed
-	// check if legalEntity is mine
-	// decrypt
-	// check fire
-	// auto-ack to bridge with signed message with missing signatures
 
 	var missingSignatures []string
 	var attSignatures map[string]bool
@@ -180,8 +177,63 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 		}
 	}
 
+	// todo download, unzip, validate
 	// update
-	//bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
+	for _, att := range crs.Attachments {
+
+		attBytes, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
+		if err != nil {
+			logrus.Errorf("Error in downloading attachment with hash [%s]: %v", att, err)
+			continue
+		}
+
+		for _, ent := range missingSignatures {
+			r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
+			dec, err := ioutil.ReadAll(r)
+
+			if err != nil {
+				logrus.Errorf("Error in decoding base64 string: %v", err)
+				continue
+			}
+
+			// todo Sign attachment not its ID
+			sigBytes, err := cl.NutsCrypto.SignFor(dec, cryptoTypes.LegalEntity{URI: ent})
+
+			if err != nil {
+					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
+				continue
+			}
+
+			pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: ent})
+			if err != nil {
+				logrus.Errorf("Error in getting pubKey for %s: %v", ent, err)
+				continue
+			}
+
+			sigBytes64 := bytes.NewBuffer([]byte{})
+			w := base64.NewEncoder(base64.StdEncoding, sigBytes64)
+			if _, err := w.Write(sigBytes); err != nil {
+				if err != nil {
+					logrus.Errorf("Error in encoding base64 string: %v", err)
+					continue
+				}
+			}
+
+			attSig := bridgeClient.PartyAttachmentSignature{
+				LegalEntity: bridgeClient.Identifier(ent),
+				Attachment: att,
+				Signature: bridgeClient.SignatureWithKey{
+					Data: sigBytes64.String(),
+					PublicKey: pubKey,
+				},
+			}
+
+			logrus.Debugf("Sending AcceptConsentRequest to bridge: %+v", attSig)
+
+			bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
+		}
+	}
+
 
 	return nil
 }
