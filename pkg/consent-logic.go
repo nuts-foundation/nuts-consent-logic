@@ -22,6 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"github.com/cznic/strutil"
@@ -176,7 +177,7 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 		}
 	}
 
-	// todo download, unzip, validate
+	// todo download, decrypt, validate
 	// update
 	for _, att := range crs.Attachments {
 
@@ -195,8 +196,14 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 			//	continue
 			//}
 
-			// todo Sign attachment not its ID
-			sigBytes, err := cl.NutsCrypto.SignFor([]byte(att), cryptoTypes.LegalEntity{URI: ent})
+			// convert hex string of attachment to bytes
+			hexBytes, err := hex.DecodeString(att)
+			if err != nil {
+				logrus.Errorf("Error in converting hex string to bytes for %s: %v", ent, err)
+				continue
+			}
+
+			sigBytes, err := cl.NutsCrypto.SignFor(hexBytes, cryptoTypes.LegalEntity{URI: ent})
 
 			if err != nil {
 					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
