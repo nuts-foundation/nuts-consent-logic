@@ -157,10 +157,10 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 		return err
 	}
 
-	logrus.Debugf("Handling ConsentRequestState: %v", crs)
+	logrus.Debugf("Handling ConsentRequestState: %+v", crs)
 
 	var missingSignatures []string
-	var attSignatures map[string]bool
+	attSignatures := make(map[string]bool)
 
 	for _, att := range crs.Signatures {
 		attSignatures[string(att.LegalEntity)] = true
@@ -176,66 +176,72 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 		}
 	}
 
-	// todo download, decrypt, validate
-	// update
-	for _, att := range crs.Attachments {
+	if len(missingSignatures) == 0 {
+		logrus.Debugf("Sending FinalizeRequest to bridge for UUID: %s", consentRequestId)
 
-		_, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
-		if err != nil {
-			logrus.Errorf("Error in downloading attachment with hash [%s]: %v", att, err)
-			continue
-		}
+		bridgeClient.NewConsentBridgeClient().FinalizeConsentRequestState(context.Background(), consentRequestId)
+	} else {
 
-		for _, ent := range missingSignatures {
-			//r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
-			//dec, err := ioutil.ReadAll(r)
-			//
-			//if err != nil {
-			//	logrus.Errorf("Error in decoding base64 string: %v", err)
-			//	continue
-			//}
+		// todo download, decrypt, validate
+		// update
+		for _, att := range crs.Attachments {
 
-			// convert hex string of attachment to bytes
-			hexBytes, err := hex.DecodeString(att)
+			_, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
 			if err != nil {
-				logrus.Errorf("Error in converting hex string to bytes for %s: %v", ent, err)
+				logrus.Errorf("Error in downloading attachment with hash [%s]: %v", att, err)
 				continue
 			}
 
-			sigBytes, err := cl.NutsCrypto.SignFor(hexBytes, cryptoTypes.LegalEntity{URI: ent})
+			for _, ent := range missingSignatures {
+				//r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
+				//dec, err := ioutil.ReadAll(r)
+				//
+				//if err != nil {
+				//	logrus.Errorf("Error in decoding base64 string: %v", err)
+				//	continue
+				//}
 
-			logrus.Infof("LENGTH OF SIGNATURE: %d", len(sigBytes))
+				// convert hex string of attachment to bytes
+				hexBytes, err := hex.DecodeString(att)
+				if err != nil {
+					logrus.Errorf("Error in converting hex string to bytes for %s: %v", ent, err)
+					continue
+				}
 
-			if err != nil {
+				sigBytes, err := cl.NutsCrypto.SignFor(hexBytes, cryptoTypes.LegalEntity{URI: ent})
+
+				logrus.Infof("LENGTH OF SIGNATURE: %d", len(sigBytes))
+
+				if err != nil {
 					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
-				continue
+					continue
+				}
+
+				pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: ent})
+				if err != nil {
+					logrus.Errorf("Error in getting pubKey for %s: %v", ent, err)
+					continue
+				}
+
+				b64 := base64.StdEncoding.EncodeToString(sigBytes)
+				logrus.Infof("LENGTH OF BASE64: %d", len(b64))
+				logrus.Infof("BASE64: %s", b64)
+
+				attSig := bridgeClient.PartyAttachmentSignature{
+					LegalEntity: bridgeClient.Identifier(ent),
+					Attachment:  att,
+					Signature: bridgeClient.SignatureWithKey{
+						Data:      b64,
+						PublicKey: pubKey,
+					},
+				}
+
+				logrus.Debugf("Sending AcceptConsentRequest to bridge: %+v", attSig)
+
+				bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
 			}
-
-			pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: ent})
-			if err != nil {
-				logrus.Errorf("Error in getting pubKey for %s: %v", ent, err)
-				continue
-			}
-
-			b64 := base64.StdEncoding.EncodeToString(sigBytes)
-			logrus.Infof("LENGTH OF BASE64: %d", len(b64))
-			logrus.Infof("BASE64: %s", b64)
-
-			attSig := bridgeClient.PartyAttachmentSignature{
-				LegalEntity: bridgeClient.Identifier(ent),
-				Attachment: att,
-				Signature: bridgeClient.SignatureWithKey{
-					Data: b64,
-					PublicKey: pubKey,
-				},
-			}
-
-			logrus.Debugf("Sending AcceptConsentRequest to bridge: %+v", attSig)
-
-			bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
 		}
 	}
-
 
 	return nil
 }
