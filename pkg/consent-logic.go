@@ -19,7 +19,6 @@
 package pkg
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/hex"
@@ -216,20 +215,11 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 				continue
 			}
 
-			sigBytes64 := bytes.NewBuffer([]byte{})
-			w := base64.NewEncoder(base64.StdEncoding, sigBytes64)
-			if _, err := w.Write(sigBytes); err != nil {
-				if err != nil {
-					logrus.Errorf("Error in encoding base64 string: %v", err)
-					continue
-				}
-			}
-
 			attSig := bridgeClient.PartyAttachmentSignature{
 				LegalEntity: bridgeClient.Identifier(ent),
 				Attachment: att,
 				Signature: bridgeClient.SignatureWithKey{
-					Data: sigBytes64.String(),
+					Data: base64.StdEncoding.EncodeToString(sigBytes),
 					PublicKey: pubKey,
 				},
 			}
