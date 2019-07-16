@@ -204,6 +204,8 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 
 			sigBytes, err := cl.NutsCrypto.SignFor(hexBytes, cryptoTypes.LegalEntity{URI: ent})
 
+			logrus.Infof("LENGTH OF SIGNATURE: %d", len(sigBytes))
+
 			if err != nil {
 					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
 				continue
@@ -215,11 +217,15 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 				continue
 			}
 
+			b64 := base64.StdEncoding.EncodeToString(sigBytes)
+			logrus.Infof("LENGTH OF BASE64: %d", len(b64))
+			logrus.Infof("BASE64: %s", b64)
+
 			attSig := bridgeClient.PartyAttachmentSignature{
 				LegalEntity: bridgeClient.Identifier(ent),
 				Attachment: att,
 				Signature: bridgeClient.SignatureWithKey{
-					Data: base64.StdEncoding.EncodeToString(sigBytes),
+					Data: b64,
 					PublicKey: pubKey,
 				},
 			}
