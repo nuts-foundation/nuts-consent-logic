@@ -164,7 +164,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			return fmt.Errorf("failed to marshall Event to json: %v", err)
 		}
 
-		err = publisher.Publish("consentRequest", ejs)
+		err = publisher.Publish(events.ChannelConsentRequest, ejs)
 
 		if err != nil {
 			return fmt.Errorf("error during publishing of event: %v", err)

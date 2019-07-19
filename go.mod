@@ -14,7 +14,7 @@ require (
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190712065958-47766f61ea6b
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190617124857-4b1882c21216
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190719081547-2667a1cf5e3e
+	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190719090211-6c5ad48e80c7
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd
 	github.com/nuts-foundation/nuts-go v0.0.0-20190708115924-fe865d621733
 	github.com/nuts-foundation/nuts-registry v0.0.0-20190705212653-f967ccf4207c
