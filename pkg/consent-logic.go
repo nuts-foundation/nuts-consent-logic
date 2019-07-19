@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/cznic/strutil"
@@ -30,8 +31,11 @@ import (
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
+	eventClient "github.com/nuts-foundation/nuts-event-octopus/client"
+	events "github.com/nuts-foundation/nuts-event-octopus/pkg"
 	"github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"sync"
 )
@@ -101,10 +105,6 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debug("FHIR resource encrypted", encryptedConsent)
 	}
 	{
-		ctx := context.Background()
-
-		bc := bridgeClient.NewConsentBridgeClient()
-
 		state := bridgeClient.NewConsentRequestState{
 			Attachment: string(strutil.Base64Encode(encryptedConsent.CipherText)),
 			ExternalId: consentId,
@@ -135,13 +135,42 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			})
 		}
 
-		logrus.Debugf("Sending NewConsentRequest to bridge: %+v", state)
+		sjs, err := json.Marshal(state)
+		if err != nil {
+			return fmt.Errorf("failed to marshall NewConsentRequest to json: %v", err)
+		}
+		bsjs := base64.StdEncoding.EncodeToString(sjs)
 
-		if err := bc.NewConsentRequestState(ctx, state); err != nil {
-			return errors.New(fmt.Sprintf("sending new consent request state failed: %v", err))
+		logrus.Debugf("Marshalled NewConsentRequest for bridge with state: %+v", state)
+
+		event := events.Event{
+			Uuid: uuid.NewV4().String(),
+			State: events.EventStateOffered,
+			Custodian: string(createConsentRequest.Custodian),
+			RetryCount: 0,
+			ExternalId: consentId,
+			Payload: bsjs,
 		}
 
-		logrus.Debug("Consent request send")
+		publisher, err := eventClient.NewEventOctopusClient().EventPublisher("consent-logic")
+
+		if err != nil {
+			return fmt.Errorf("failed to get event publisher: %v", err)
+		}
+
+		ejs, err := json.Marshal(event)
+
+		if err != nil {
+			return fmt.Errorf("failed to marshall Event to json: %v", err)
+		}
+
+		err = publisher.Publish("consentRequest", ejs)
+
+		if err != nil {
+			return fmt.Errorf("error during publishing of event: %v", err)
+		}
+
+		logrus.Debugf("Published NewConsentRequest to bridge with event: %+v", event)
 	}
 
 	return nil
