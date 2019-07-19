@@ -176,7 +176,8 @@ func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
 		}
 	}
 
-	if len(missingSignatures) == 0 {
+	// todo check if me == Custodian
+	if len(crs.Signatures) == len(crs.LegalEntities) * len(crs.Attachments) {
 		logrus.Debugf("Sending FinalizeRequest to bridge for UUID: %s", consentRequestId)
 
 		bridgeClient.NewConsentBridgeClient().FinalizeConsentRequestState(context.Background(), consentRequestId)
