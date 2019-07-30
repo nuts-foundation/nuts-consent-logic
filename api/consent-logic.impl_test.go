@@ -25,9 +25,12 @@ import (
 	cryptoMock "github.com/nuts-foundation/nuts-crypto/mock"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
+	mock2 "github.com/nuts-foundation/nuts-event-octopus/mock"
+	pkg2 "github.com/nuts-foundation/nuts-event-octopus/pkg"
 	registryMock "github.com/nuts-foundation/nuts-registry/mock"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"testing"
 	"time"
@@ -35,22 +38,31 @@ import (
 	"github.com/nuts-foundation/nuts-go/mock"
 )
 
+type EventPublisherMock struct{}
+
+func (EventPublisherMock) Publish(subject string, event pkg2.Event) error {
+	return nil
+}
+
 func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
-	t.Run("It start a consent flow", func(t *testing.T) {
+	t.Run("It starts a consent flow", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		registryMock := registryMock.NewMockRegistryClient(ctrl)
 		cryptoMock := cryptoMock.NewMockClient(ctrl)
+		octoMock := mock2.NewMockEventOctopusClient(ctrl)
 
 		publicKey := "123"
 		endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
 		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
+		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil)
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
 		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
 
-		apiWrapper := wrapper(registryMock, cryptoMock)
+		apiWrapper := wrapper(registryMock, cryptoMock, octoMock)
 		defer ctrl.Finish()
 		echoServer := mock.NewMockContext(ctrl)
 
@@ -82,11 +94,19 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 	})
 }
 
-func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client) *Wrapper {
+func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client, octopusClient pkg2.EventOctopusClient) *Wrapper {
+
+	publisher, err := octopusClient.EventPublisher("consent-logic")
+	if err != nil {
+		logrus.WithError(err).Panic("Could not subscribe to event publisher")
+	}
+
 	return &Wrapper{
 		Cl: &pkg.ConsentLogic{
 			NutsRegistry: registryClient,
 			NutsCrypto:   cryptoClient,
+			NutsEventOctopus: octopusClient,
+			EventPublisher: publisher,
 		},
 	}
 }

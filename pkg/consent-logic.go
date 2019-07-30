@@ -19,9 +19,7 @@
 package pkg
 
 import (
-	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -33,7 +31,7 @@ import (
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	eventClient "github.com/nuts-foundation/nuts-event-octopus/client"
 	events "github.com/nuts-foundation/nuts-event-octopus/pkg"
-	"github.com/nuts-foundation/nuts-registry/client"
+	registryClient "github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -45,14 +43,16 @@ type ConsentLogicConfig struct {
 
 type ConsentLogicClient interface {
 	StartConsentFlow(*CreateConsentRequest) error
-	HandleConsentRequest(string) error
+	HandleIncomingCordaEvent(*events.Event)
 }
 
 type ConsentLogic struct {
 	NutsRegistry     pkg.RegistryClient
 	NutsCrypto       crypto.Client
 	NutsConsentStore cStore.ConsentStoreClient
+	NutsEventOctopus events.EventOctopusClient
 	Config           ConsentLogicConfig
+	EventPublisher   events.IEventPublisher
 }
 
 var instance *ConsentLogic
@@ -112,11 +112,11 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 				Domain: []bridgeClient.Domain{"medical"},
 				Period: bridgeClient.Period{
 					ValidFrom: createConsentRequest.Period.Start,
-					ValidTo: createConsentRequest.Period.End,
+					ValidTo:   createConsentRequest.Period.End,
 				},
 				SecureKey: bridgeClient.SymmetricKey{
 					Alg: "AES_GCM", //todo hardcoded
-					Iv: string(strutil.Base64Encode(encryptedConsent.Nonce)),
+					Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
 				},
 				OrganisationSecureKeys: []bridgeClient.ASymmetricKey{},
 			},
@@ -129,8 +129,8 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		for i := range encryptedConsent.CipherTextKeys {
 			ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
 			state.Metadata.OrganisationSecureKeys = append(state.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
-				Alg: &alg,
-				CipherText: &ctBase64,
+				Alg:         &alg,
+				CipherText:  &ctBase64,
 				LegalEntity: bridgeClient.Identifier(legalEnts[i]),
 			})
 		}
@@ -144,28 +144,15 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		logrus.Debugf("Marshalled NewConsentRequest for bridge with state: %+v", state)
 
 		event := events.Event{
-			Uuid: uuid.NewV4().String(),
-			State: events.EventStateOffered,
-			Custodian: string(createConsentRequest.Custodian),
-			RetryCount: 0,
-			ExternalId: consentId,
-			Payload: bsjs,
+			Uuid:                 uuid.NewV4().String(),
+			Name:                 events.EventConsentRequestConstructed,
+			InitiatorLegalEntity: string(createConsentRequest.Custodian),
+			RetryCount:           0,
+			ExternalId:           consentId,
+			Payload:              bsjs,
 		}
 
-		publisher, err := eventClient.NewEventOctopusClient().EventPublisher("consent-logic")
-
-		if err != nil {
-			return fmt.Errorf("failed to get event publisher: %v", err)
-		}
-
-		ejs, err := json.Marshal(event)
-
-		if err != nil {
-			return fmt.Errorf("failed to marshall Event to json: %v", err)
-		}
-
-		err = publisher.Publish(events.ChannelConsentRequest, ejs)
-
+		err = cl.EventPublisher.Publish(events.ChannelConsentRequest, event)
 		if err != nil {
 			return fmt.Errorf("error during publishing of event: %v", err)
 		}
@@ -176,104 +163,132 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	return nil
 }
 
-// HandleConsentRequest auto-acks ConsentRequests with the missing signatures
-func (cl ConsentLogic) HandleConsentRequest(consentRequestId string) error {
-	// get from bridge
-	crs, err := bridgeClient.NewConsentBridgeClient().GetConsentRequestStateById(context.Background(), consentRequestId)
+// HandleIncomingCordaEvent auto-acks ConsentRequests with the missing signatures
+// * Get the consentRequestState by id from the consentBridge
+// * For each legalEntity get its public key
+func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
+	logrus.Infof("received event %v", event)
 
-	if err != nil {
+	crs := bridgeClient.FullConsentRequestState{}
+	if err := json.Unmarshal([]byte(event.Payload), &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
-		return err
+		errorDescription := "Could not unmarshall event payload"
+		event.Error = &errorDescription
+		logrus.WithError(err).Error(errorDescription)
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		return
+	}
+
+	// check if all parties signed all attachments, than this request can be finalized by the initiator
+	if len(crs.Signatures) == len(crs.LegalEntities) {
+		logrus.Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
+
+		// are we the initiator? InitiatorLegalEntity is only set at the initiating node.
+		if event.InitiatorLegalEntity != "" {
+			// finalize!
+			event.Name = events.EventAllSignaturesPresent
+			cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+		}
+		// stop the flow and return
+		return
 	}
 
 	logrus.Debugf("Handling ConsentRequestState: %+v", crs)
 
-	var missingSignatures []string
-	attSignatures := make(map[string]bool)
+	// find out which legal entity is ours and still needs signing? It can be more than one, but always take first one missing.
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
 
-	for _, att := range crs.Signatures {
+	// is there work for us?
+	if legalEntityToSignFor == "" {
+		// nothing to sign for this node. We are done.
+		return
+	}
+
+	// decrypt
+	// =======
+	encodedCipherText := crs.CipherText
+	cipherText, err := base64.StdEncoding.DecodeString(encodedCipherText)
+	// convert hex string of attachment to bytes
+	if err != nil {
+		errorDescription := "Error in converting base64 encoded attachment"
+		event.Error = &errorDescription
+		logrus.WithError(err).Error(errorDescription)
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		return
+	}
+	fhirConsent, err := cl.decryptConsentRecord(cipherText, crs, legalEntityToSignFor)
+	if err != nil {
+		errorDescription := "Could not decrypt consent record"
+		event.Error = &errorDescription
+		logrus.WithError(err).Error(errorDescription)
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		return
+	}
+
+	// validate
+	// ========
+	if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+		errorDescription := "Consent record invalid"
+		event.Error = &errorDescription
+		logrus.WithError(err).Error(errorDescription)
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+
+	// publish EventConsentRequestValid
+	// ===========================
+	event.Name = events.EventConsentRequestValid
+	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
+	var legalEntityKey string
+
+	for _, value := range crs.Metadata.OrganisationSecureKeys {
+		if value.LegalEntity == bridgeClient.Identifier(legalEntity) {
+			legalEntityKey = *value.CipherText
+		}
+	}
+
+	dect := cryptoTypes.DoubleEncryptedCipherText{
+		CipherText:     cipherText,
+		CipherTextKeys: [][]byte{[]byte(legalEntityKey)},
+		Nonce:          []byte(crs.Metadata.SecureKey.Iv),
+	}
+	encodedConsentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
+	if err != nil {
+		logrus.WithError(err).Error("Could not decrypt consent record")
+		return "", err
+	}
+	consentRecord, err := base64.StdEncoding.DecodeString(string(encodedConsentRecord))
+	if err != nil {
+		logrus.WithError(err).Error("Could not base64decode consent record")
+		return "", err
+	}
+
+	return string(consentRecord), nil
+}
+
+func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
+	// fill map with signatures legalEntity for easy lookup
+	attSignatures := make(map[string]bool)
+	for _, att := range signatures {
 		attSignatures[string(att.LegalEntity)] = true
 	}
 
-	for _, ent := range crs.LegalEntities {
+	// Find all LegalEntities managed by this node which still need a signature
+	// for each legal entity...
+	for _, ent := range identifiers {
+		// ... check if it has already signed the request
 		if !attSignatures[string(ent)] {
+			// if not, if this node manages the public key, than it is our identity.
 			key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(ent)})
 			if len(key) != 0 {
-				logrus.Debugf("ConsentRequestState with id %v is missing signature for legalEntity %v",crs.ConsentId, ent)
-				missingSignatures = append(missingSignatures,string(ent))
+				// yes, so lets add it to the missingSignatures so we can sign it in the next step
+				return string(ent)
 			}
 		}
 	}
-
-	// todo check if me == Custodian
-	if len(crs.Signatures) == len(crs.LegalEntities) * len(crs.Attachments) {
-		logrus.Debugf("Sending FinalizeRequest to bridge for UUID: %s", consentRequestId)
-
-		bridgeClient.NewConsentBridgeClient().FinalizeConsentRequestState(context.Background(), consentRequestId)
-	} else {
-
-		// todo download, decrypt, validate
-		// update
-		for _, att := range crs.Attachments {
-
-			_, err := bridgeClient.NewConsentBridgeClient().GetAttachmentBySecureHash(context.Background(), att)
-			if err != nil {
-				logrus.Errorf("Error in downloading attachment with hash [%s]: %v", att, err)
-				continue
-			}
-
-			for _, ent := range missingSignatures {
-				//r := base64.NewDecoder(base64.StdEncoding, bytes.NewReader(attBytes))
-				//dec, err := ioutil.ReadAll(r)
-				//
-				//if err != nil {
-				//	logrus.Errorf("Error in decoding base64 string: %v", err)
-				//	continue
-				//}
-
-				// convert hex string of attachment to bytes
-				hexBytes, err := hex.DecodeString(att)
-				if err != nil {
-					logrus.Errorf("Error in converting hex string to bytes for %s: %v", ent, err)
-					continue
-				}
-
-				sigBytes, err := cl.NutsCrypto.SignFor(hexBytes, cryptoTypes.LegalEntity{URI: ent})
-
-				logrus.Infof("LENGTH OF SIGNATURE: %d", len(sigBytes))
-
-				if err != nil {
-					logrus.Errorf("Error in signing bytes for %s: %v", ent, err)
-					continue
-				}
-
-				pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: ent})
-				if err != nil {
-					logrus.Errorf("Error in getting pubKey for %s: %v", ent, err)
-					continue
-				}
-
-				b64 := base64.StdEncoding.EncodeToString(sigBytes)
-				logrus.Infof("LENGTH OF BASE64: %d", len(b64))
-				logrus.Infof("BASE64: %s", b64)
-
-				attSig := bridgeClient.PartyAttachmentSignature{
-					LegalEntity: bridgeClient.Identifier(ent),
-					Attachment:  att,
-					Signature: bridgeClient.SignatureWithKey{
-						Data:      b64,
-						PublicKey: pubKey,
-					},
-				}
-
-				logrus.Debugf("Sending AcceptConsentRequest to bridge: %+v", attSig)
-
-				bridgeClient.NewConsentBridgeClient().AcceptConsentRequestState(context.Background(), consentRequestId, attSig)
-			}
-		}
-	}
-
-	return nil
+	return ""
 }
 
 func (ConsentLogic) Configure() error {
@@ -282,8 +297,24 @@ func (ConsentLogic) Configure() error {
 
 func (cl *ConsentLogic) Start() error {
 	cl.NutsCrypto = crypto.NewCryptoClient()
-	cl.NutsRegistry = client.NewRegistryClient()
+	cl.NutsRegistry = registryClient.NewRegistryClient()
 	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
+	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()
+	publisher, err := cl.NutsEventOctopus.EventPublisher("consent-logic")
+	if err != nil {
+		logrus.WithError(err).Panic("Could not subscribe to event publisher")
+	}
+	cl.EventPublisher = publisher
+
+	err = cl.NutsEventOctopus.Subscribe("consent-logic",
+		events.ChannelConsentRequest,
+		map[string]events.EventHandlerCallback{
+			events.EventConsentRequestConstructed: cl.HandleIncomingCordaEvent,
+		})
+	if err != nil {
+		panic(err)
+	}
+
 	return nil
 }
 
