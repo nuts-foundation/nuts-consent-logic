@@ -42,7 +42,6 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 			return cryptoTypes.DoubleEncryptedCipherText{}, fmt.Errorf("registry entry for organization %v does not contain a public key", actor)
 		}
 		pk := *organization.PublicKey
-		logrus.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}
 
@@ -52,7 +51,6 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		logrus.Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
-	logrus.Debug("pk:", pk)
 	partyKeys = append(partyKeys, pk)
 
 	return cryptoClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)

@@ -82,6 +82,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	{
 		if consentId, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
 			fmt.Println(err)
+			// todo: report back the reason why the consentId could not be generated. Probably because the custodian is not managed by this node?
 			return errors.New("could not create the consentId for this combination of subject and custodian")
 		}
 		logrus.Debug("ConsentId generated")
@@ -102,12 +103,19 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
 			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
 		}
-		logrus.Debug("FHIR resource encrypted", encryptedConsent)
+		logrus.Debug("FHIR resource encrypted")
 	}
 	{
-		state := bridgeClient.NewConsentRequestState{
-			Attachment: string(strutil.Base64Encode(encryptedConsent.CipherText)),
-			ExternalId: consentId,
+		var legalEntities []bridgeClient.Identifier
+		for _, entity := range createConsentRequest.Actors {
+			legalEntities = append(legalEntities, bridgeClient.Identifier(entity))
+		}
+		legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
+
+		payloadData := bridgeClient.FullConsentRequestState{
+			CipherText:    base64.StdEncoding.EncodeToString(encryptedConsent.CipherText),
+			ConsentId:     bridgeClient.ConsentId{ExternalId: &consentId},
+			LegalEntities: legalEntities,
 			Metadata: bridgeClient.Metadata{
 				Domain: []bridgeClient.Domain{"medical"},
 				Period: bridgeClient.Period{
@@ -115,33 +123,30 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 					ValidTo:   createConsentRequest.Period.End,
 				},
 				SecureKey: bridgeClient.SymmetricKey{
-					Alg: "AES_GCM", //todo hardcoded
+					Alg: "AES_GCM", //todo: fix hardcoded alg
 					Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
 				},
-				OrganisationSecureKeys: []bridgeClient.ASymmetricKey{},
 			},
+			Signatures: nil,
 		}
-
-		legalEnts := createConsentRequest.Actors
-		legalEnts = append(legalEnts, createConsentRequest.Custodian)
 
 		alg := "RSA-OAEP"
 		for i := range encryptedConsent.CipherTextKeys {
 			ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
-			state.Metadata.OrganisationSecureKeys = append(state.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
+			payloadData.Metadata.OrganisationSecureKeys = append(payloadData.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
 				Alg:         &alg,
 				CipherText:  &ctBase64,
-				LegalEntity: bridgeClient.Identifier(legalEnts[i]),
+				LegalEntity: legalEntities[i],
 			})
 		}
 
-		sjs, err := json.Marshal(state)
+		sjs, err := json.Marshal(payloadData)
 		if err != nil {
 			return fmt.Errorf("failed to marshall NewConsentRequest to json: %v", err)
 		}
 		bsjs := base64.StdEncoding.EncodeToString(sjs)
 
-		logrus.Debugf("Marshalled NewConsentRequest for bridge with state: %+v", state)
+		logrus.Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
 
 		event := events.Event{
 			Uuid:                 uuid.NewV4().String(),
@@ -238,6 +243,12 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// ===========================
 	event.Name = events.EventConsentRequestValid
 	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	//event.Payload = string(payload)
+	//
+	//// publish new request with added signature:
+	//cl.EventPublisher.Publish(events.EventConsentRequestAcked, *event)
+
+	return
 }
 
 func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
@@ -314,6 +325,8 @@ func (cl *ConsentLogic) Start() error {
 	if err != nil {
 		panic(err)
 	}
+	event := events.Event{Name: events.EventConsentRequestConstructed}
+	publisher.Publish(events.ChannelConsentRequest, event)
 
 	return nil
 }
