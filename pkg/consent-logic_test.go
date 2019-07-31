@@ -86,7 +86,8 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000001"})
 		//consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
-		consentRequestState.CipherText = "foo"
+		foo := "foo"
+		consentRequestState.CipherText = &foo
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
 
@@ -107,7 +108,8 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		defer ctrl.Finish()
 		consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
-		consentRequestState.CipherText = "foo"
+		foo := "foo"
+		consentRequestState.CipherText = &foo
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -122,13 +124,15 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 	})
 
 	t.Run("not all signatures set, and remaining LegalEntity managed by this node and valid content should broadcast all checks passed", func(t *testing.T) {
-		consentRequestState.CipherText = base64.StdEncoding.EncodeToString([]byte("foo"))
+		fooEncoded := base64.StdEncoding.EncodeToString([]byte("foo"))
+		consentRequestState.CipherText = &fooEncoded
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
+		consentRequestState.Metadata = &api.Metadata{}
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		// 00000001 already signed

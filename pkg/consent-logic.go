@@ -115,22 +115,24 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		}
 		legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
 
+		cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
+		bridgeMeta := bridgeClient.Metadata{
+			Domain: []bridgeClient.Domain{"medical"},
+			Period: bridgeClient.Period{
+				ValidFrom: createConsentRequest.Period.Start,
+				ValidTo:   createConsentRequest.Period.End,
+			},
+			SecureKey: bridgeClient.SymmetricKey{
+				Alg: "AES_GCM", //todo: fix hardcoded alg
+				Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
+			},
+		}
+
 		payloadData := bridgeClient.FullConsentRequestState{
-			CipherText:    base64.StdEncoding.EncodeToString(encryptedConsent.CipherText),
+			CipherText:    &cipherText,
 			ConsentId:     bridgeClient.ConsentId{ExternalId: &consentId},
 			LegalEntities: legalEntities,
-			Metadata: bridgeClient.Metadata{
-				Domain: []bridgeClient.Domain{"medical"},
-				Period: bridgeClient.Period{
-					ValidFrom: createConsentRequest.Period.Start,
-					ValidTo:   createConsentRequest.Period.End,
-				},
-				SecureKey: bridgeClient.SymmetricKey{
-					Alg: "AES_GCM", //todo: fix hardcoded alg
-					Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
-				},
-			},
-			Signatures: nil,
+			Metadata: &bridgeMeta,
 		}
 
 		alg := "RSA-OAEP"
@@ -222,7 +224,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// decrypt
 	// =======
 	encodedCipherText := crs.CipherText
-	cipherText, err := base64.StdEncoding.DecodeString(encodedCipherText)
+	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
 	// convert hex string of attachment to bytes
 	if err != nil {
 		errorDescription := "Error in converting base64 encoded attachment"
@@ -263,6 +265,12 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
 	var legalEntityKey string
+
+	if crs.Metadata == nil {
+		err := errors.New("Missing metadata in consentRequest")
+		Logger().Error(err)
+		return "", err
+	}
 
 	for _, value := range crs.Metadata.OrganisationSecureKeys {
 		if value.LegalEntity == bridgeClient.Identifier(legalEntity) {
