@@ -335,9 +335,6 @@ func (cl *ConsentLogic) Start() error {
 	if err != nil {
 		panic(err)
 	}
-	event := events.Event{Name: events.EventConsentRequestConstructed}
-	publisher.Publish(events.ChannelConsentRequest, event)
-
 	return nil
 }
 
