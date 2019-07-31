@@ -14,10 +14,10 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/nats-io/nats.go v1.8.1
 	github.com/nats-io/stan.go v0.4.5
-	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190730133931-6a0bc545399f
+	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731114904-2cb265829d38
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190617124857-4b1882c21216
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190730135359-8b84bdf905af
+	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190731114018-4696223a63a4
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd
 	github.com/nuts-foundation/nuts-go v0.0.0-20190708115924-fe865d621733
 	github.com/nuts-foundation/nuts-registry v0.0.0-20190705212653-f967ccf4207c
