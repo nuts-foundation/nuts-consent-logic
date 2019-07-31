@@ -34,7 +34,7 @@ import (
 func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 	consentRequestState := api.FullConsentRequestState{}
-	payload, _ := json.Marshal(consentRequestState)
+	encodedState, _ := json.Marshal(consentRequestState)
 
 	t.Run("sending an event without payload should publish an error", func(t *testing.T) {
 		// Setup
@@ -44,7 +44,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentErrored), gomock.Any())
 		defer ctrl.Finish()
 
-		payload := ""
+		payload := base64.StdEncoding.EncodeToString([]byte(""))
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload})
 
 		cl := ConsentLogic{EventPublisher: publisherMock}
@@ -54,7 +54,8 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 	t.Run("it finalizes when all attachments are signed and initiatorLegalEntity is set", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
-		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: string(payload), InitiatorLegalEntity: "urn:agb:00000001"})
+		payload := base64.StdEncoding.EncodeToString(encodedState)
+		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 		defer ctrl.Finish()
 
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: string(payload), InitiatorLegalEntity: "urn:agb:00000001"})
@@ -68,6 +69,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		defer ctrl.Finish()
 
+		payload := base64.StdEncoding.EncodeToString(encodedState)
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: string(payload)})
 
 		cl := ConsentLogic{EventPublisher: publisherMock}
@@ -85,11 +87,12 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		//consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		consentRequestState.CipherText = "foo"
-		payload, _ := json.Marshal(consentRequestState)
+		encodedState, _ := json.Marshal(consentRequestState)
+		payload := base64.StdEncoding.EncodeToString(encodedState)
 
 		event := &(pkg.Event{
 			Name:    pkg.EventDistributedConsentRequestReceived,
-			Payload: string(payload),
+			Payload: payload,
 		})
 
 		cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoMock}
@@ -105,7 +108,9 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		consentRequestState.CipherText = "foo"
-		payload, _ := json.Marshal(consentRequestState)
+
+		encodedState, _ := json.Marshal(consentRequestState)
+		payload := base64.StdEncoding.EncodeToString(encodedState)
 
 		event := &(pkg.Event{
 			Name:    pkg.EventDistributedConsentRequestReceived,
@@ -139,10 +144,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		encodedValidConsent := []byte(base64.StdEncoding.EncodeToString(validConsent))
 		cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:agb:00000002"}).Return(encodedValidConsent, nil)
 
-		payload, _ := json.Marshal(consentRequestState)
+		encodedState, _ := json.Marshal(consentRequestState)
+		payload := base64.StdEncoding.EncodeToString(encodedState)
 		event := &(pkg.Event{
 			Name:    pkg.EventDistributedConsentRequestReceived,
-			Payload: string(payload),
+			Payload: payload,
 		})
 
 		expectedEvent := event

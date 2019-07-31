@@ -178,7 +178,14 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	Logger().Infof("received event %v", event)
 
 	crs := bridgeClient.FullConsentRequestState{}
-	if err := json.Unmarshal([]byte(event.Payload), &crs); err != nil {
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		errorDescription := "Could not base64 decode event payload"
+		event.Error = &errorDescription
+		Logger().WithError(err).Error(errorDescription)
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
 		errorDescription := "Could not unmarshall event payload"
 		event.Error = &errorDescription
