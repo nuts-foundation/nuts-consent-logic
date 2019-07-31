@@ -103,10 +103,10 @@ func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client,
 
 	return &Wrapper{
 		Cl: &pkg.ConsentLogic{
-			NutsRegistry: registryClient,
-			NutsCrypto:   cryptoClient,
+			NutsRegistry:     registryClient,
+			NutsCrypto:       cryptoClient,
 			NutsEventOctopus: octopusClient,
-			EventPublisher: publisher,
+			EventPublisher:   publisher,
 		},
 	}
 }

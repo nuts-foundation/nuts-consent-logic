@@ -21,4 +21,3 @@ package pkg
 func NewConsentLogicClient() ConsentLogicClient {
 	return ConsentLogicInstance()
 }
-

@@ -23,7 +23,6 @@ import (
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
-	"github.com/sirupsen/logrus"
 )
 
 func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient crypto.Client, fhirConsent string, request CreateConsentRequest) (cryptoTypes.DoubleEncryptedCipherText, error) {
@@ -35,7 +34,7 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		// get public key for actor
 		organization, err := registryClient.OrganizationById(string(actor))
 		if err != nil {
-			logrus.Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
+			Logger().Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
 			return cryptoTypes.DoubleEncryptedCipherText{}, err
 		}
 		if organization.PublicKey == nil {
@@ -48,7 +47,7 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 	// and custodian
 	pk, err := cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
 	if err != nil {
-		logrus.Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
+		Logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
 	partyKeys = append(partyKeys, pk)

@@ -58,10 +58,13 @@ type ConsentLogic struct {
 var instance *ConsentLogic
 var oneEngine sync.Once
 
+func Logger() *logrus.Entry {
+	return logrus.StandardLogger().WithField("module", "consent-logic")
+}
+
 func ConsentLogicInstance() *ConsentLogic {
 	oneEngine.Do(func() {
-		instance = &ConsentLogic{
-		}
+		instance = &ConsentLogic{}
 	})
 	return instance
 }
@@ -77,7 +80,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
 			return errors.New("custodian is not a known vendor")
 		}
-		logrus.Debug("Custodian is known")
+		Logger().Debug("Custodian is known")
 	}
 	{
 		if consentId, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
@@ -85,25 +88,25 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			// todo: report back the reason why the consentId could not be generated. Probably because the custodian is not managed by this node?
 			return errors.New("could not create the consentId for this combination of subject and custodian")
 		}
-		logrus.Debug("ConsentId generated")
+		Logger().Debug("ConsentId generated")
 	}
 	{
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
 			return errors.New("could not create the FHIR consent resource")
 		}
-		logrus.Debug("FHIR resource created")
+		Logger().Debug("FHIR resource created")
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 			return errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
 		}
-		logrus.Debug("FHIR resource is valid")
+		Logger().Debug("FHIR resource is valid")
 	}
 	{
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
 			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
 		}
-		logrus.Debug("FHIR resource encrypted")
+		Logger().Debug("FHIR resource encrypted")
 	}
 	{
 		var legalEntities []bridgeClient.Identifier
@@ -146,7 +149,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		}
 		bsjs := base64.StdEncoding.EncodeToString(sjs)
 
-		logrus.Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
+		Logger().Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
 
 		event := events.Event{
 			Uuid:                 uuid.NewV4().String(),
@@ -162,7 +165,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 			return fmt.Errorf("error during publishing of event: %v", err)
 		}
 
-		logrus.Debugf("Published NewConsentRequest to bridge with event: %+v", event)
+		Logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
 	}
 
 	return nil
@@ -172,21 +175,21 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 // * Get the consentRequestState by id from the consentBridge
 // * For each legalEntity get its public key
 func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
-	logrus.Infof("received event %v", event)
+	Logger().Infof("received event %v", event)
 
 	crs := bridgeClient.FullConsentRequestState{}
 	if err := json.Unmarshal([]byte(event.Payload), &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
 		errorDescription := "Could not unmarshall event payload"
 		event.Error = &errorDescription
-		logrus.WithError(err).Error(errorDescription)
+		Logger().WithError(err).Error(errorDescription)
 		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
 
 	// check if all parties signed all attachments, than this request can be finalized by the initiator
 	if len(crs.Signatures) == len(crs.LegalEntities) {
-		logrus.Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
+		Logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
 
 		// are we the initiator? InitiatorLegalEntity is only set at the initiating node.
 		if event.InitiatorLegalEntity != "" {
@@ -198,7 +201,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		return
 	}
 
-	logrus.Debugf("Handling ConsentRequestState: %+v", crs)
+	Logger().Debugf("Handling ConsentRequestState: %+v", crs)
 
 	// find out which legal entity is ours and still needs signing? It can be more than one, but always take first one missing.
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
@@ -217,7 +220,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	if err != nil {
 		errorDescription := "Error in converting base64 encoded attachment"
 		event.Error = &errorDescription
-		logrus.WithError(err).Error(errorDescription)
+		Logger().WithError(err).Error(errorDescription)
 		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
@@ -225,7 +228,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	if err != nil {
 		errorDescription := "Could not decrypt consent record"
 		event.Error = &errorDescription
-		logrus.WithError(err).Error(errorDescription)
+		Logger().WithError(err).Error(errorDescription)
 		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
@@ -235,7 +238,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 		errorDescription := "Consent record invalid"
 		event.Error = &errorDescription
-		logrus.WithError(err).Error(errorDescription)
+		Logger().WithError(err).Error(errorDescription)
 		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
 
@@ -267,12 +270,12 @@ func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.
 	}
 	encodedConsentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
 	if err != nil {
-		logrus.WithError(err).Error("Could not decrypt consent record")
+		Logger().WithError(err).Error("Could not decrypt consent record")
 		return "", err
 	}
 	consentRecord, err := base64.StdEncoding.DecodeString(string(encodedConsentRecord))
 	if err != nil {
-		logrus.WithError(err).Error("Could not base64decode consent record")
+		Logger().WithError(err).Error("Could not base64decode consent record")
 		return "", err
 	}
 
@@ -313,7 +316,7 @@ func (cl *ConsentLogic) Start() error {
 	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()
 	publisher, err := cl.NutsEventOctopus.EventPublisher("consent-logic")
 	if err != nil {
-		logrus.WithError(err).Panic("Could not subscribe to event publisher")
+		Logger().WithError(err).Panic("Could not subscribe to event publisher")
 	}
 	cl.EventPublisher = publisher
 

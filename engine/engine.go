@@ -32,13 +32,13 @@ func NewConsentLogicEngine() *engine.Engine {
 	cl := pkg.ConsentLogicInstance()
 
 	return &engine.Engine{
-		Name: "ConsentLogicInstance",
-		Cmd: cmd(),
+		Name:      "ConsentLogicInstance",
+		Cmd:       cmd(),
 		Configure: cl.Configure,
-		Start: cl.Start,
+		Start:     cl.Start,
 		ConfigKey: "clogic",
-		FlagSet: flagSet(),
-		Shutdown: cl.Shutdown,
+		FlagSet:   flagSet(),
+		Shutdown:  cl.Shutdown,
 		Routes: func(router runtime.EchoRouter) {
 			api.RegisterHandlers(router, &api.Wrapper{Cl: cl})
 		},
@@ -52,14 +52,14 @@ func flagSet() *pflag.FlagSet {
 
 func cmd() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "consent-logic",
-		Short:"consent logic commands",
+		Use:   "consent-logic",
+		Short: "consent logic commands",
 	}
 
 	cmd.AddCommand(&cobra.Command{
-		Use: "create [subject] [custodian] [actors] [performer]? [proof]?",
+		Use:     "create [subject] [custodian] [actors] [performer]? [proof]?",
 		Example: "create urn:oid:2.16.840.1.113883.2.4.6.3:999999990 urn:oid:2.16.840.1.113883.2.4.6.1:00000007 urn:oid:2.16.840.1.113883.2.4.6.1:00000001,urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
-		Short: "initiate a new consent record flow for subject, custodian and actors. Actors is comma-seperated",
+		Short:   "initiate a new consent record flow for subject, custodian and actors. Actors is comma-seperated",
 
 		Args: func(cmd *cobra.Command, args []string) error {
 			if len(args) < 3 {

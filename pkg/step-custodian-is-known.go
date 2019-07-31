@@ -16,7 +16,6 @@
  *
  */
 
-
 package pkg
 
 func CustodianIsKnown(request CreateConsentRequest) (bool, error) {
