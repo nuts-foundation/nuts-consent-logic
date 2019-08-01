@@ -268,6 +268,12 @@ github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190730133931-6a0bc5
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190730133931-6a0bc545399f/go.mod h1:gYFt7e6N19M+9EaLCipcDEuzT3xVA7dQRCTQH3hP4o0=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731114904-2cb265829d38 h1:tPEEWivPgzNxG8mN9BmRmhpCesT7Zs4Ph2yaWw962kE=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731114904-2cb265829d38/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731145144-fad9867c23be h1:PucuMgqCmfmjjzZt2q/Q8PMgMvAnHAjmVV0g7+Nuacg=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731145144-fad9867c23be/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731145600-678876c85bd2 h1:YpW7O1MRtJvuV+ja9+zJtFZNHXpNJArmmvbC5ai5hRc=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731145600-678876c85bd2/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731150722-f01025854f51 h1:GlAkZbDoCLrHcJVzQV1SyMHRvfVLRHsJ0TGeHVLRS28=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731150722-f01025854f51/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12 h1:qkvfEi4ftwT3OvB/FrPV+a+ksyqKgWiXp82kgZ1y5R0=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12/go.mod h1:Ps3MsC6diRRJkImRANrSkPtu3fE46HKUrwiN+KMyIRk=
 github.com/nuts-foundation/nuts-consent-logic v0.0.0-20190611125028-90459f4fa533/go.mod h1:n0gCA6ub8bB/oOW6ZHd650sO6jtC67jN05oTpu2b3tE=
@@ -322,6 +328,8 @@ github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190730135359-8b84bdf905af
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190730135359-8b84bdf905af/go.mod h1:GQJs8gImH0CN7w7w3YVNl7669H9aQmhZgf4oMiXraDg=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190731114018-4696223a63a4 h1:xvRks14i9pUlwM9tmYZlG9YUdA335zZXF7RrmSS25bA=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190731114018-4696223a63a4/go.mod h1:GQJs8gImH0CN7w7w3YVNl7669H9aQmhZgf4oMiXraDg=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190731140028-0e171205763d h1:MJbiF8786j8ItWrpAUEwDISh8ENelX5JXOfpcTV/rGA=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190731140028-0e171205763d/go.mod h1:GQJs8gImH0CN7w7w3YVNl7669H9aQmhZgf4oMiXraDg=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190521115806-20d420b92f2a h1:O+d+Q4V3gfHo9CmS+/sFfaubvF+vmorhM5PuJgOdoLM=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190521115806-20d420b92f2a/go.mod h1:ryd3lcbAQtRdoT8mhdywrVBNtfW9K/+ntJu0LkzXXF0=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190528075634-03be0d14821d h1:FN/kaM1I4sO7YQVJsIThi5LEk1yX663BsTNjXvWQitw=

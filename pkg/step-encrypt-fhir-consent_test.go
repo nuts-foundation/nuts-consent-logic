@@ -67,8 +67,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, types2.LegalEntity{URI: custodianId},
-		)
+		}, types2.LegalEntity{URI: custodianId}, )
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}

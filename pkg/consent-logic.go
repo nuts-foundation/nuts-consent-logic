@@ -70,6 +70,21 @@ func ConsentLogicInstance() *ConsentLogic {
 }
 
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
+	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
+	if err != nil {
+		return err
+	}
+
+	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	if err != nil {
+		return fmt.Errorf("error during publishing of event: %v", err)
+	}
+
+	Logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
+	return nil
+}
+
+func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var fhirConsent string
 	var consentId string
@@ -78,7 +93,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	{
 		if res, err := CustodianIsKnown(*createConsentRequest); !res || err != nil {
 			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
-			return errors.New("custodian is not a known vendor")
+			return nil, errors.New("custodian is not a known vendor")
 		}
 		Logger().Debug("Custodian is known")
 	}
@@ -86,91 +101,83 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		if consentId, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
 			fmt.Println(err)
 			// todo: report back the reason why the consentId could not be generated. Probably because the custodian is not managed by this node?
-			return errors.New("could not create the consentId for this combination of subject and custodian")
+			return nil, errors.New("could not create the consentId for this combination of subject and custodian")
 		}
 		Logger().Debug("ConsentId generated")
 	}
 	{
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
-			return errors.New("could not create the FHIR consent resource")
+			return nil, errors.New("could not create the FHIR consent resource")
 		}
 		Logger().Debug("FHIR resource created")
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			return errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
+			return nil, errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
 		}
 		Logger().Debug("FHIR resource is valid")
 	}
 	{
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
+			return nil, errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
 		}
 		Logger().Debug("FHIR resource encrypted")
 	}
-	{
-		var legalEntities []bridgeClient.Identifier
-		for _, entity := range createConsentRequest.Actors {
-			legalEntities = append(legalEntities, bridgeClient.Identifier(entity))
-		}
-		legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
+	var legalEntities []bridgeClient.Identifier
 
-		cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
-		bridgeMeta := bridgeClient.Metadata{
-			Domain: []bridgeClient.Domain{"medical"},
-			Period: bridgeClient.Period{
-				ValidFrom: createConsentRequest.Period.Start,
-				ValidTo:   createConsentRequest.Period.End,
-			},
-			SecureKey: bridgeClient.SymmetricKey{
-				Alg: "AES_GCM", //todo: fix hardcoded alg
-				Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
-			},
-		}
+	cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
 
-		payloadData := bridgeClient.FullConsentRequestState{
-			CipherText:    &cipherText,
-			ConsentId:     bridgeClient.ConsentId{ExternalId: &consentId},
-			LegalEntities: legalEntities,
-			Metadata: &bridgeMeta,
-		}
-
-		alg := "RSA-OAEP"
-		for i := range encryptedConsent.CipherTextKeys {
-			ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
-			payloadData.Metadata.OrganisationSecureKeys = append(payloadData.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
-				Alg:         &alg,
-				CipherText:  &ctBase64,
-				LegalEntity: legalEntities[i],
-			})
-		}
-
-		sjs, err := json.Marshal(payloadData)
-		if err != nil {
-			return fmt.Errorf("failed to marshall NewConsentRequest to json: %v", err)
-		}
-		bsjs := base64.StdEncoding.EncodeToString(sjs)
-
-		Logger().Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
-
-		event := events.Event{
-			Uuid:                 uuid.NewV4().String(),
-			Name:                 events.EventConsentRequestConstructed,
-			InitiatorLegalEntity: string(createConsentRequest.Custodian),
-			RetryCount:           0,
-			ExternalId:           consentId,
-			Payload:              bsjs,
-		}
-
-		err = cl.EventPublisher.Publish(events.ChannelConsentRequest, event)
-		if err != nil {
-			return fmt.Errorf("error during publishing of event: %v", err)
-		}
-
-		Logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
+	bridgeMeta := bridgeClient.Metadata{
+		Domain: []bridgeClient.Domain{"medical"},
+		Period: bridgeClient.Period{
+			ValidFrom: createConsentRequest.Period.Start,
+			ValidTo:   createConsentRequest.Period.End,
+		},
+		SecureKey: bridgeClient.SymmetricKey{
+			Alg: "AES_GCM", //todo: fix hardcoded alg
+			Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
+		},
 	}
 
-	return nil
+	for _, entity := range createConsentRequest.Actors {
+		legalEntities = append(legalEntities, bridgeClient.Identifier(entity))
+	}
+	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
+
+	payloadData := bridgeClient.FullConsentRequestState{
+		CipherText:    &cipherText,
+		ConsentId:     bridgeClient.ConsentId{ExternalId: &consentId},
+		LegalEntities: legalEntities,
+		Metadata:      &bridgeMeta,
+	}
+
+	alg := "RSA-OAEP"
+	for i := range encryptedConsent.CipherTextKeys {
+		ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
+		payloadData.Metadata.OrganisationSecureKeys = append(payloadData.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
+			Alg:         &alg,
+			CipherText:  &ctBase64,
+			LegalEntity: legalEntities[i],
+		})
+	}
+
+	sjs, err := json.Marshal(payloadData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshall NewConsentRequest to json: %v", err)
+	}
+	bsjs := base64.StdEncoding.EncodeToString(sjs)
+
+	//Logger().Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
+
+	event := &events.Event{
+		Uuid:                 uuid.NewV4().String(),
+		Name:                 events.EventConsentRequestConstructed,
+		InitiatorLegalEntity: string(createConsentRequest.Custodian),
+		RetryCount:           0,
+		ExternalId:           consentId,
+		Payload:              bsjs,
+	}
+	return event, nil
 }
 
 // HandleIncomingCordaEvent auto-acks ConsentRequests with the missing signatures
@@ -264,7 +271,6 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 }
 
 func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
-	var legalEntityKey string
 
 	if crs.Metadata == nil {
 		err := errors.New("Missing metadata in consentRequest")
@@ -272,25 +278,27 @@ func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.
 		return "", err
 	}
 
+	var encodedLegalEntityKey string
 	for _, value := range crs.Metadata.OrganisationSecureKeys {
 		if value.LegalEntity == bridgeClient.Identifier(legalEntity) {
-			legalEntityKey = *value.CipherText
+			encodedLegalEntityKey = *value.CipherText
 		}
 	}
 
+	if encodedLegalEntityKey == "" {
+		return "", fmt.Errorf("No key found for legalEntity: %s", legalEntity)
+	}
+	legalEntityKey, _ := base64.StdEncoding.DecodeString(encodedLegalEntityKey)
+
+	nonce, _ := base64.StdEncoding.DecodeString(crs.Metadata.SecureKey.Iv)
 	dect := cryptoTypes.DoubleEncryptedCipherText{
 		CipherText:     cipherText,
-		CipherTextKeys: [][]byte{[]byte(legalEntityKey)},
-		Nonce:          []byte(crs.Metadata.SecureKey.Iv),
+		CipherTextKeys: [][]byte{legalEntityKey},
+		Nonce:          nonce,
 	}
-	encodedConsentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
+	consentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
 	if err != nil {
 		Logger().WithError(err).Error("Could not decrypt consent record")
-		return "", err
-	}
-	consentRecord, err := base64.StdEncoding.DecodeString(string(encodedConsentRecord))
-	if err != nil {
-		Logger().WithError(err).Error("Could not base64decode consent record")
 		return "", err
 	}
 
@@ -313,6 +321,7 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyA
 			key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(ent)})
 			if len(key) != 0 {
 				// yes, so lets add it to the missingSignatures so we can sign it in the next step
+				Logger().Debugf("found first entity to sign for: %v", ent)
 				return string(ent)
 			}
 		}
@@ -338,7 +347,7 @@ func (cl *ConsentLogic) Start() error {
 	err = cl.NutsEventOctopus.Subscribe("consent-logic",
 		events.ChannelConsentRequest,
 		map[string]events.EventHandlerCallback{
-			events.EventConsentRequestConstructed: cl.HandleIncomingCordaEvent,
+			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
 		})
 	if err != nil {
 		panic(err)

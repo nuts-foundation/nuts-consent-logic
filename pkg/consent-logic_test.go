@@ -19,16 +19,24 @@
 package pkg
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
+	"encoding/pem"
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
 	mock2 "github.com/nuts-foundation/nuts-crypto/mock"
+	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-event-octopus/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
+	mock3 "github.com/nuts-foundation/nuts-registry/mock"
+	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	"io/ioutil"
 	"testing"
+	"time"
 )
 
 func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
@@ -132,7 +140,10 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
-		consentRequestState.Metadata = &api.Metadata{}
+		cypherText2 := "cyphertext for 00000002"
+		consentRequestState.Metadata = &api.Metadata{
+			OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
+		}
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		// 00000001 already signed
@@ -145,8 +156,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		if err != nil {
 			t.Error(err)
 		}
-		encodedValidConsent := []byte(base64.StdEncoding.EncodeToString(validConsent))
-		cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:agb:00000002"}).Return(encodedValidConsent, nil)
+		cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:agb:00000002"}).Return(validConsent, nil)
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -164,5 +174,65 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoMock}
 		cl.HandleIncomingCordaEvent(event)
 	})
+
+}
+
+func TestConsentLogic_StartConsentFlow(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	publisherMock := mock.NewMockIEventPublisher(ctrl)
+
+	subjectId := "bsn:999999990"
+	custodianId := "agb:00000001"
+	party1Id := "agb:00000002"
+	performerId := "agb:00000007"
+
+	cryptoClient := pkg2.NewCryptoClient()
+
+	cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianId})
+	//publicKeyCustodian, _ := cryptoClient.PublicKey(types.LegalEntity{URI: custodianId})
+
+	reader := rand.Reader
+	key, err := rsa.GenerateKey(reader, 2048)
+	pub := key.PublicKey
+	pubASN1 := x509.MarshalPKCS1PublicKey(&pub)
+	pubBytes := pem.EncodeToMemory(&pem.Block{
+		Type:  "PUBLIC KEY",
+		Bytes: pubASN1,
+	})
+	publicKeyId1 := string(pubBytes)
+
+	//publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+	registryClient := mock3.NewMockRegistryClient(ctrl)
+	//registryClient.EXPECT().OrganizationById(gomock.Eq(custodianId)).Return(&db.Organization{PublicKey: &publicKeyCustodian}, nil)
+	registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKeyId1}, nil)
+
+	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
+	performer := IdentifierURI(performerId)
+	ccr := &CreateConsentRequest{
+		Actors:       []IdentifierURI{IdentifierURI(party1Id)},
+		ConsentProof: nil,
+		Custodian:    IdentifierURI(custodianId),
+		Performer:    &performer,
+		Period:       &Period{Start: time.Now()},
+		Subject:      IdentifierURI(subjectId),
+	}
+	event, err := cl.createNewConsentRequestEvent(ccr)
+	if err != nil {
+		t.Error("did not expect error:", err)
+	}
+
+	crs := api.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	json.Unmarshal(decodedPayload, &crs)
+
+	encodedCipherText := crs.CipherText
+	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+	_, err = cl.decryptConsentRecord(cipherText, crs, legalEntityToSignFor)
+
+	if err != nil {
+		t.Error("Could not decrypt consent", err)
+	}
 
 }
