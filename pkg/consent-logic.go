@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/cznic/strutil"
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
@@ -135,7 +134,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		},
 		SecureKey: bridgeClient.SymmetricKey{
 			Alg: "AES_GCM", //todo: fix hardcoded alg
-			Iv:  string(strutil.Base64Encode(encryptedConsent.Nonce)),
+			Iv: base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 		},
 	}
 
@@ -153,7 +152,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 
 	alg := "RSA-OAEP"
 	for i := range encryptedConsent.CipherTextKeys {
-		ctBase64 := string(strutil.Base64Encode(encryptedConsent.CipherTextKeys[i]))
+		ctBase64 := base64.StdEncoding.EncodeToString(encryptedConsent.CipherTextKeys[i])
 		payloadData.Metadata.OrganisationSecureKeys = append(payloadData.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
 			Alg:         &alg,
 			CipherText:  &ctBase64,

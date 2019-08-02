@@ -4,7 +4,6 @@ go 1.12
 
 require (
 	github.com/cbroglie/mustache v1.0.1
-	github.com/cznic/strutil v0.0.0-20171016134553-529a34b1c186
 	github.com/deepmap/oapi-codegen v1.1.6
 	github.com/golang/mock v1.3.1
 	github.com/labstack/echo/v4 v4.1.5
