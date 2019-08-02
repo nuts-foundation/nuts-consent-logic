@@ -234,6 +234,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 			Logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
 			event.Name = events.EventAllSignaturesPresent
 			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+		} else {
+			Logger().Debug("This node is not the initiator. Lets wait for the initiator to broadcast EventAllSignaturesPresent")
 		}
 		return
 	}
