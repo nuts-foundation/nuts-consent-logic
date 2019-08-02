@@ -20,6 +20,7 @@ package pkg
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -310,15 +311,20 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		return &event, nil
 	}
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
-	Logger().Debugf("signing for LegalEntity %s", legalEntityToSignFor)
+	consentRecordHash := crs.AttachmentHashes[0]
+	Logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
 	pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
 	if err != nil {
 		Logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
 		return nil, err
 	}
-	consentHash := crs.AttachmentHashes[0]
-	sigBytes, err := cl.NutsCrypto.SignFor([]byte(consentHash), cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
+	if err != nil {
+		Logger().Errorf("Could not decode consentRecordHash into hex value %s: %v", consentRecordHash, err)
+		return nil, err
+	}
+	sigBytes, err := cl.NutsCrypto.SignFor(hexConsentRecordHash, cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
 	if err != nil {
 		errorDescription := fmt.Sprintf("Could not sign consent record for %s, err: %v", legalEntityToSignFor, err)
 		event.Error = &errorDescription
@@ -327,7 +333,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 	}
 	encodedSignatureBytes := base64.StdEncoding.EncodeToString(sigBytes)
 	partySignature := bridgeClient.PartyAttachmentSignature{
-		Attachment:  consentHash,
+		Attachment:  consentRecordHash,
 		LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
 		Signature: bridgeClient.SignatureWithKey{
 			Data:      encodedSignatureBytes,
