@@ -291,7 +291,7 @@ func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
 		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
 	newEvent.Name = events.EventAttachmentSigned
-	_ = cl.EventPublisher.Publish(events.EventConsentRequestAcked, *newEvent)
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *newEvent)
 }
 
 func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, error) {
@@ -311,6 +311,8 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		return &event, nil
 	}
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+	Logger().Debugf("signing for LegalEntity %s", legalEntityToSignFor)
+
 	pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
 	if err != nil {
 		Logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
@@ -340,6 +342,8 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		return nil, err
 	}
 	event.Payload = string(payload)
+	Logger().Debugf("Consent request signed for %s", legalEntityToSignFor)
+
 	return &event, nil
 }
 
