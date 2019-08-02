@@ -216,11 +216,15 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 				if err != nil {
 					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityId, err)
 					event.Error = &errorMsg
+					Logger().Debug(errorMsg)
 					_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 					return
 				}
 				if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
 					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityId)
+					Logger().Debug(errorMsg)
+					Logger().Debugf("publicKey from registry: %s ", *legalEntity.PublicKey)
+					Logger().Debugf("publicKey from signature: %s ", publicKey)
 					event.Error = &errorMsg
 					_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 					return
