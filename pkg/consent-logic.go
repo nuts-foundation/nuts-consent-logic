@@ -336,12 +336,11 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		},
 	}
 
-	crs.Signatures = append(crs.Signatures, partySignature)
-	payload, err := json.Marshal(crs)
+	payload, err := json.Marshal(partySignature)
 	if err != nil {
 		return nil, err
 	}
-	event.Payload = string(payload)
+	event.Payload = base64.StdEncoding.EncodeToString(payload)
 	Logger().Debugf("Consent request signed for %s", legalEntityToSignFor)
 
 	return &event, nil
