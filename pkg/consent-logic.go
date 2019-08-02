@@ -205,15 +205,32 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 	// check if all parties signed all attachments, than this request can be finalized by the initiator
 	if len(crs.Signatures) == len(crs.LegalEntities) {
-		Logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
-
+		Logger().Debugf("All signatures present for UUID: %s", event.ConsentId)
 		// are we the initiator? InitiatorLegalEntity is only set at the initiating node.
 		if event.InitiatorLegalEntity != "" {
-			// finalize!
+
+			for _, signature := range crs.Signatures {
+				publicKey := signature.Signature.PublicKey
+				legalEntityId := signature.LegalEntity
+				legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityId))
+				if err != nil {
+					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityId, err)
+					event.Error = &errorMsg
+					cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
+					return
+				}
+				if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
+					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityId)
+					event.Error = &errorMsg
+					cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+					return
+				}
+			}
+
+			Logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
 			event.Name = events.EventAllSignaturesPresent
 			cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 		}
-		// stop the flow and return
 		return
 	}
 
@@ -249,8 +266,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		return
 	}
 
-	// validate
-	// ========
+	// validate consent record
+	// =======================
 	if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 		errorDescription := "Consent record invalid"
 		event.Error = &errorDescription
@@ -262,12 +279,64 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// ===========================
 	event.Name = events.EventConsentRequestValid
 	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
-	//event.Payload = string(payload)
+
+	return
+}
+
+func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
+	var newEvent *events.Event
+	var err error
+
+	if newEvent, err = cl.signConsentRequest(*event); err != nil {
+		errorMsg := fmt.Sprintf("could nog sign request %v", err)
+		event.Error = &errorMsg
+		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+	newEvent.Name = events.EventAttachmentSigned
+	_ = cl.EventPublisher.Publish(events.EventConsentRequestAcked, *newEvent)
+}
+
+func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, error) {
+	crs := bridgeClient.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		errorDescription := "Could not base64 decode event payload"
+		event.Error = &errorDescription
+		Logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
+		// have event-octopus handle redelivery or cancellation
+		errorDescription := "Could not unmarshall event payload"
+		event.Error = &errorDescription
+		Logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+	pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	if err != nil {
+		Logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
+		return nil, err
+	}
+	consentHash := crs.AttachmentHashes[0]
+	sigBytes, err := cl.NutsCrypto.SignFor([]byte(consentHash), cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	encodedSignatureBytes := base64.StdEncoding.EncodeToString(sigBytes)
+	partySignature := bridgeClient.PartyAttachmentSignature{
+		Attachment:  consentHash,
+		LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
+		Signature: bridgeClient.SignatureWithKey{
+			Data:      encodedSignatureBytes,
+			PublicKey: pubKey,
+		},
+	}
+
+	crs.Signatures = append(crs.Signatures, partySignature)
+	payload, err := json.Marshal(crs)
+	event.Payload = string(payload)
 	//
 	//// publish new request with added signature:
 	//cl.EventPublisher.Publish(events.EventConsentRequestAcked, *event)
-
-	return
+	return &event, nil
 }
 
 func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
@@ -329,6 +398,19 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyA
 	return ""
 }
 
+// AutoAckConsentRequest republishes every event as acked.
+// TODO: This should be made optional so the ECD can perform checks and publish the ack or nack
+func (cl ConsentLogic) AutoAckConsentRequest(event *events.Event) {
+	event, _ = cl.autoAckConsentRequest(*event)
+	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event, error) {
+	newEvent := event
+	newEvent.Name = events.EventConsentRequestAcked
+	return &newEvent, nil
+}
+
 func (ConsentLogic) Configure() error {
 	return nil
 }
@@ -347,7 +429,10 @@ func (cl *ConsentLogic) Start() error {
 	err = cl.NutsEventOctopus.Subscribe("consent-logic",
 		events.ChannelConsentRequest,
 		map[string]events.EventHandlerCallback{
+			//events.EventConsentRequestConstructed:         cl.HandleIncomingCordaEvent,
 			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
+			events.EventConsentRequestValid:               cl.AutoAckConsentRequest,
+			events.EventConsentRequestAcked:               cl.SignConsentRequest,
 		})
 	if err != nil {
 		panic(err)
