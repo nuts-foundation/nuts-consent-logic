@@ -107,13 +107,17 @@ func Execute() {
 		panic(err)
 	}
 
-	eventOctopusEngine.Start()
+	if err := eventOctopusEngine.Start(); err != nil {
+		panic(err)
+	}
 
 	if err := registryEngine.Configure(); err != nil {
 		panic(err)
 	}
 
-	consentLogicEngine.Start()
+	if err := consentLogicEngine.Start(); err != nil {
+		panic(err)
+	}
 
 	if err := rootCommand.Execute(); err != nil {
 		fmt.Println(err)

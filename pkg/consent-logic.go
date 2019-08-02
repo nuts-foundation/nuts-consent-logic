@@ -192,14 +192,14 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		errorDescription := "Could not base64 decode event payload"
 		event.Error = &errorDescription
 		Logger().WithError(err).Error(errorDescription)
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
 	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
 		errorDescription := "Could not unmarshall event payload"
 		event.Error = &errorDescription
 		Logger().WithError(err).Error(errorDescription)
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
 
@@ -216,20 +216,20 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 				if err != nil {
 					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityId, err)
 					event.Error = &errorMsg
-					cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
+					_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 					return
 				}
 				if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
 					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityId)
 					event.Error = &errorMsg
-					cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+					_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 					return
 				}
 			}
 
 			Logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
 			event.Name = events.EventAllSignaturesPresent
-			cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 		}
 		return
 	}
@@ -254,7 +254,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		errorDescription := "Error in converting base64 encoded attachment"
 		event.Error = &errorDescription
 		Logger().WithError(err).Error(errorDescription)
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
 	fhirConsent, err := cl.decryptConsentRecord(cipherText, crs, legalEntityToSignFor)
@@ -262,7 +262,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		errorDescription := "Could not decrypt consent record"
 		event.Error = &errorDescription
 		Logger().WithError(err).Error(errorDescription)
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 		return
 	}
 
@@ -272,13 +272,13 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		errorDescription := "Consent record invalid"
 		event.Error = &errorDescription
 		Logger().WithError(err).Error(errorDescription)
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
 
 	// publish EventConsentRequestValid
 	// ===========================
 	event.Name = events.EventConsentRequestValid
-	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 }
 
 func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
@@ -288,7 +288,7 @@ func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
 	if newEvent, err = cl.signConsentRequest(*event); err != nil {
 		errorMsg := fmt.Sprintf("could nog sign request %v", err)
 		event.Error = &errorMsg
-		cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
 	newEvent.Name = events.EventAttachmentSigned
 	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *newEvent)
@@ -350,7 +350,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
 
 	if crs.Metadata == nil {
-		err := errors.New("Missing metadata in consentRequest")
+		err := errors.New("missing metadata in consentRequest")
 		Logger().Error(err)
 		return "", err
 	}
@@ -363,7 +363,7 @@ func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.
 	}
 
 	if encodedLegalEntityKey == "" {
-		return "", fmt.Errorf("No key found for legalEntity: %s", legalEntity)
+		return "", fmt.Errorf("no key found for legalEntity: %s", legalEntity)
 	}
 	legalEntityKey, _ := base64.StdEncoding.DecodeString(encodedLegalEntityKey)
 
@@ -410,7 +410,7 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyA
 // TODO: This should be made optional so the ECD can perform checks and publish the ack or nack
 func (cl ConsentLogic) AutoAckConsentRequest(event *events.Event) {
 	event, _ = cl.autoAckConsentRequest(*event)
-	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 }
 
 func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event, error) {

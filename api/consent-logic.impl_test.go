@@ -22,12 +22,12 @@ import (
 	"encoding/json"
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	cryptoMock "github.com/nuts-foundation/nuts-crypto/mock"
+	cryptomock "github.com/nuts-foundation/nuts-crypto/mock"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	mock2 "github.com/nuts-foundation/nuts-event-octopus/mock"
 	pkg2 "github.com/nuts-foundation/nuts-event-octopus/pkg"
-	registryMock "github.com/nuts-foundation/nuts-registry/mock"
+	registrymock "github.com/nuts-foundation/nuts-registry/mock"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	"github.com/sirupsen/logrus"
@@ -48,8 +48,8 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 	t.Run("It starts a consent flow", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
-		registryMock := registryMock.NewMockRegistryClient(ctrl)
-		cryptoMock := cryptoMock.NewMockClient(ctrl)
+		registryMock := registrymock.NewMockRegistryClient(ctrl)
+		cryptoMock := cryptomock.NewMockClient(ctrl)
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
 
 		publicKey := "123"
@@ -80,7 +80,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		jsonData, _ := json.Marshal(*jsonRequest)
 
 		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
-			json.Unmarshal(jsonData, f)
+			_ = json.Unmarshal(jsonData, f)
 		})
 
 		// setup response expectation

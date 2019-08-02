@@ -19,5 +19,6 @@
 package pkg
 
 func CustodianIsKnown(request CreateConsentRequest) (bool, error) {
+	// todo: get public key from crypto to check if custodian is managed by this node
 	return true, nil
 }

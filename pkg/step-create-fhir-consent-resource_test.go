@@ -76,7 +76,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			var o1 interface{}
 			var o2 interface{}
 
-			json.Unmarshal(validConsent, &o1)
+			_ = json.Unmarshal(validConsent, &o1)
 			got, err := CreateFhirConsentResource(tt.args.request)
 
 			err = json.Unmarshal([]byte(got), &o2)

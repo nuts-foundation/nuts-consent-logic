@@ -45,7 +45,7 @@ func TestGetConsentId(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			cClient := crypto.NewCryptoClient()
-			cClient.GenerateKeyPairFor(types.LegalEntity{URI: string(tt.args.request.Custodian)})
+			_ = cClient.GenerateKeyPairFor(types.LegalEntity{URI: string(tt.args.request.Custodian)})
 
 			got, err := GetConsentId(cClient, tt.args.request)
 			if (err != nil) != tt.wantErr {

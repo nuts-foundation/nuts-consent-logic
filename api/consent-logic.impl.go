@@ -42,7 +42,7 @@ func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	nullTime := time.Time{}
 
 	if createConsentApiRequest.Period.Start == nullTime {
-		err := errors.New("Period.start time is required")
+		err := errors.New("period.start time is required")
 		ctx.Logger().Error(err)
 		return err
 	}

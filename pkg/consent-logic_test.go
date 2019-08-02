@@ -66,7 +66,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 		defer ctrl.Finish()
 
-		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: string(payload), InitiatorLegalEntity: "urn:agb:00000001"})
+		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 
 		cl := ConsentLogic{EventPublisher: publisherMock}
 		cl.HandleIncomingCordaEvent(event)
@@ -78,7 +78,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		defer ctrl.Finish()
 
 		payload := base64.StdEncoding.EncodeToString(encodedState)
-		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: string(payload)})
+		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload})
 
 		cl := ConsentLogic{EventPublisher: publisherMock}
 		cl.HandleIncomingCordaEvent(event)
@@ -124,7 +124,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		event := &(pkg.Event{
 			Name:    pkg.EventDistributedConsentRequestReceived,
-			Payload: string(payload),
+			Payload: payload,
 		})
 
 		cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoMock}
@@ -189,8 +189,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 
 	cryptoClient := pkg2.NewCryptoClient()
 
-	cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianId})
-	//publicKeyCustodian, _ := cryptoClient.PublicKey(types.LegalEntity{URI: custodianId})
+	_ = cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianId})
 
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)
@@ -202,9 +201,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	})
 	publicKeyId1 := string(pubBytes)
 
-	//publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 	registryClient := mock3.NewMockRegistryClient(ctrl)
-	//registryClient.EXPECT().OrganizationById(gomock.Eq(custodianId)).Return(&db.Organization{PublicKey: &publicKeyCustodian}, nil)
 	registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKeyId1}, nil)
 
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
@@ -224,7 +221,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 
 	crs := api.FullConsentRequestState{}
 	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
-	json.Unmarshal(decodedPayload, &crs)
+	_ = json.Unmarshal(decodedPayload, &crs)
 
 	encodedCipherText := crs.CipherText
 	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
