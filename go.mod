@@ -6,13 +6,8 @@ require (
 	github.com/cbroglie/mustache v1.0.1
 	github.com/cznic/strutil v0.0.0-20171016134553-529a34b1c186
 	github.com/deepmap/oapi-codegen v1.1.6
-	github.com/getkin/kin-openapi v0.2.0
 	github.com/golang/mock v1.3.1
 	github.com/labstack/echo/v4 v4.1.5
-	github.com/labstack/gommon v0.2.8
-	github.com/mitchellh/go-homedir v1.1.0
-	github.com/nats-io/nats.go v1.8.1
-	github.com/nats-io/stan.go v0.4.5
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731150722-f01025854f51
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190617124857-4b1882c21216
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81
@@ -24,5 +19,4 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.3
-	github.com/spf13/viper v1.4.0
 )
