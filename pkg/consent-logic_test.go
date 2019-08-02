@@ -193,7 +193,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	//publicKeyCustodian, _ := cryptoClient.PublicKey(types.LegalEntity{URI: custodianId})
 
 	reader := rand.Reader
-	key, err := rsa.GenerateKey(reader, 2048)
+	key, _ := rsa.GenerateKey(reader, 2048)
 	pub := key.PublicKey
 	pubASN1 := x509.MarshalPKCS1PublicKey(&pub)
 	pubBytes := pem.EncodeToMemory(&pem.Block{

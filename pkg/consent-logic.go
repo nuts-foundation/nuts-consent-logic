@@ -113,13 +113,13 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			return nil, errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
+			return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
 		}
 		Logger().Debug("FHIR resource is valid")
 	}
 	{
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			return nil, errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
+			return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
 		}
 		Logger().Debug("FHIR resource encrypted")
 	}
@@ -279,8 +279,6 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// ===========================
 	event.Name = events.EventConsentRequestValid
 	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
-
-	return
 }
 
 func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
@@ -320,6 +318,12 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 	}
 	consentHash := crs.AttachmentHashes[0]
 	sigBytes, err := cl.NutsCrypto.SignFor([]byte(consentHash), cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	if err != nil {
+		errorDescription := fmt.Sprintf("Could not sign consent record for %s, err: %v", legalEntityToSignFor, err)
+		event.Error = &errorDescription
+		Logger().WithError(err).Error(errorDescription)
+		return &event, err
+	}
 	encodedSignatureBytes := base64.StdEncoding.EncodeToString(sigBytes)
 	partySignature := bridgeClient.PartyAttachmentSignature{
 		Attachment:  consentHash,
@@ -332,10 +336,10 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 
 	crs.Signatures = append(crs.Signatures, partySignature)
 	payload, err := json.Marshal(crs)
+	if err != nil {
+		return nil, err
+	}
 	event.Payload = string(payload)
-	//
-	//// publish new request with added signature:
-	//cl.EventPublisher.Publish(events.EventConsentRequestAcked, *event)
 	return &event, nil
 }
 
