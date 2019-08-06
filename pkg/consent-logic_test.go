@@ -223,13 +223,54 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
 	_ = json.Unmarshal(decodedPayload, &crs)
 
-	encodedCipherText := crs.CipherText
-	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
-	_, err = cl.decryptConsentRecord(cipherText, crs, legalEntityToSignFor)
+	_, err = cl.decryptConsentRecord(crs, legalEntityToSignFor)
 
 	if err != nil {
 		t.Error("Could not decrypt consent", err)
 	}
 
+}
+func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
+	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
+	if err != nil {
+		t.Error(err)
+	}
+
+	cl := ConsentLogic{}
+	consentRules := cl.ConsentRulesFromFHIRRecord(string(validConsent))
+
+	if len(consentRules) != 2 {
+		t.Errorf("Expected 2 rules, got %d instead", len(consentRules))
+	}
+
+	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.3:00000000"
+	firstActor := "urn:oid:2.16.840.1.113883.2.4.6.3:00000001"
+	secondActor := "urn:oid:2.16.840.1.113883.2.4.6.3:00000002"
+	subject := "urn:oid:2.16.840.1.113883.2.4.6.1:999999990"
+
+	rule := consentRules[0]
+	if rule.Custodian != expectedCustodian {
+		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
+	}
+	if rule.Actor != firstActor {
+		t.Errorf("expected actor with id: %s, got %s instead", firstActor, rule.Actor)
+	}
+	if rule.Subject != subject {
+		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
+
+	}
+
+	// check the second rule
+	rule = consentRules[1]
+	if rule.Custodian != expectedCustodian {
+		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
+	}
+	if rule.Actor != firstActor {
+		t.Errorf("expected actor with id: %s, got %s instead", secondActor, rule.Actor)
+	}
+	if rule.Subject != subject {
+		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
+
+	}
 }

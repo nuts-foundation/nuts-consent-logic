@@ -19,6 +19,7 @@
 package pkg
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -31,10 +32,12 @@ import (
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	eventClient "github.com/nuts-foundation/nuts-event-octopus/client"
 	events "github.com/nuts-foundation/nuts-event-octopus/pkg"
+	pkg2 "github.com/nuts-foundation/nuts-fhir-validation/pkg"
 	registryClient "github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/thedevsaddam/gojsonq.v2"
 	"sync"
 )
 
@@ -135,7 +138,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		},
 		SecureKey: bridgeClient.SymmetricKey{
 			Alg: "AES_GCM", //todo: fix hardcoded alg
-			Iv: base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
+			Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 		},
 	}
 
@@ -253,17 +256,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 	// decrypt
 	// =======
-	encodedCipherText := crs.CipherText
-	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
-	// convert hex string of attachment to bytes
-	if err != nil {
-		errorDescription := "Error in converting base64 encoded attachment"
-		event.Error = &errorDescription
-		Logger().WithError(err).Error(errorDescription)
-		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
-		return
-	}
-	fhirConsent, err := cl.decryptConsentRecord(cipherText, crs, legalEntityToSignFor)
+	fhirConsent, err := cl.decryptConsentRecord(crs, legalEntityToSignFor)
 	if err != nil {
 		errorDescription := "Could not decrypt consent record"
 		event.Error = &errorDescription
@@ -357,7 +350,13 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 	return &event, nil
 }
 
-func (cl ConsentLogic) decryptConsentRecord(cipherText []byte, crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
+func (cl ConsentLogic) decryptConsentRecord(crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
+	encodedCipherText := crs.CipherText
+	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
+	// convert hex string of attachment to bytes
+	if err != nil {
+		return "", err
+	}
 
 	if crs.Metadata == nil {
 		err := errors.New("missing metadata in consentRequest")
@@ -429,6 +428,69 @@ func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event,
 	return &newEvent, nil
 }
 
+func (cl ConsentLogic) StoreConsent(event *events.Event) {
+	crs := bridgeClient.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		Logger().Errorf("Unable to base64 decode event payload")
+		return
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
+		Logger().Errorf("Unable to unmarshal event payload")
+		return
+	}
+
+	var consentRules []cStore.ConsentRule
+
+	for _, actor := range crs.LegalEntities {
+		publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(actor)})
+		if err != nil || publicKey == "" {
+			// this actor is not managed by this node, try with next
+			break
+		}
+
+		fhirConsentString, err := cl.decryptConsentRecord(crs, string(actor))
+		if err != nil {
+			Logger().Error("Could not decrypt fhir consent")
+			return
+		}
+
+		// todo: check everything for validity again
+		consentRules = cl.ConsentRulesFromFHIRRecord(fhirConsentString)
+
+		// consentrules gathered, continue with the flow
+		continue
+	}
+
+	Logger().Debugf("Storing consent: %+v", consentRules)
+	cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
+
+	event.Name = events.EventCompleted
+	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) ([]cStore.ConsentRule) {
+	var consentRules []cStore.ConsentRule
+
+	fhirConsent := gojsonq.New().JSONString(fhirConsentString)
+
+	actors := pkg2.ActorsFrom(fhirConsent)
+	custodian := pkg2.CustodianFrom(fhirConsent)
+	subject := pkg2.SubjectFrom(fhirConsent)
+	resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
+
+	for _, actor := range actors {
+		consentRules = append(consentRules, cStore.ConsentRule{
+			Actor:     string(actor),
+			Custodian: custodian,
+			Resources: resources,
+			Subject:   subject,
+		})
+	}
+
+	return consentRules
+}
+
 func (ConsentLogic) Configure() error {
 	return nil
 }
@@ -447,10 +509,10 @@ func (cl *ConsentLogic) Start() error {
 	err = cl.NutsEventOctopus.Subscribe("consent-logic",
 		events.ChannelConsentRequest,
 		map[string]events.EventHandlerCallback{
-			//events.EventConsentRequestConstructed:         cl.HandleIncomingCordaEvent,
 			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
 			events.EventConsentRequestValid:               cl.AutoAckConsentRequest,
 			events.EventConsentRequestAcked:               cl.SignConsentRequest,
+			events.EventConsentDistributed:                cl.StoreConsent,
 		})
 	if err != nil {
 		panic(err)
