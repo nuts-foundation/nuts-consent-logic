@@ -25,8 +25,10 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
+	"errors"
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
+	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
 	mock2 "github.com/nuts-foundation/nuts-crypto/mock"
 	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
@@ -231,6 +233,76 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	}
 
 }
+
+func TestConsentLogic_filterConssentRules(t *testing.T) {
+	allRules := []pkg3.ConsentRule{{
+		Custodian: "00000001",
+		Actor:     "00000002",
+	}, {
+		Custodian: "00000001",
+		Actor:     "00000003",
+	}}
+
+	t.Run("current node manges one actor", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		cryptoMock := mock2.NewMockClient(ctrl)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
+
+		cl := ConsentLogic{NutsCrypto: cryptoMock}
+		filteredRules := cl.filterConssentRules(allRules)
+		if len(filteredRules) != 1 {
+			t.Errorf("Expected only one valid rule")
+		}
+		if filteredRules[0].Actor != "00000002" {
+			t.Errorf("expected different actor")
+		}
+	})
+
+	t.Run("current node manges both actors", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		cryptoMock := mock2.NewMockClient(ctrl)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
+
+		cl := ConsentLogic{NutsCrypto: cryptoMock}
+		filteredRules := cl.filterConssentRules(allRules)
+		if len(filteredRules) != 2 {
+			t.Errorf("Expected two valid rules")
+		}
+		if filteredRules[0].Actor != "00000002" {
+			t.Errorf("expected different actor, got: %s", filteredRules[0].Actor)
+		}
+		if filteredRules[1].Actor != "00000003" {
+			t.Errorf("expected different actor, got: %s", filteredRules[1].Actor)
+		}
+	})
+	t.Run("current node manges custodian", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		cryptoMock := mock2.NewMockClient(ctrl)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("key of 1", nil)
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
+
+		cl := ConsentLogic{NutsCrypto: cryptoMock}
+		filteredRules := cl.filterConssentRules(allRules)
+		if len(filteredRules) != 2 {
+			t.Errorf("Expected two valid rules")
+		}
+		if filteredRules[0].Actor != "00000002" {
+			t.Errorf("expected different actor, got: %s", filteredRules[0].Actor)
+		}
+		if filteredRules[1].Actor != "00000003" {
+			t.Errorf("expected different actor, got: %s", filteredRules[1].Actor)
+		}
+	})
+}
+
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 	if err != nil {

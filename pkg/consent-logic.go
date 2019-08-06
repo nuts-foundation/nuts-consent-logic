@@ -446,7 +446,7 @@ func (cl ConsentLogic) StoreConsent(event *events.Event) {
 		publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(actor)})
 		if err != nil || publicKey == "" {
 			// this actor is not managed by this node, try with next
-			break
+			continue
 		}
 
 		fhirConsentString, err := cl.decryptConsentRecord(crs, string(actor))
@@ -459,14 +459,35 @@ func (cl ConsentLogic) StoreConsent(event *events.Event) {
 		consentRules = cl.ConsentRulesFromFHIRRecord(fhirConsentString)
 
 		// consentrules gathered, continue with the flow
-		continue
+		break
 	}
+
+	consentRules = cl.filterConssentRules(consentRules)
 
 	Logger().Debugf("Storing consent: %+v", consentRules)
 	cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
 
 	event.Name = events.EventCompleted
 	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+// only consent records of which or the custodian or the actor is managed by this node should be stored
+func (cl ConsentLogic)filterConssentRules(allRules []cStore.ConsentRule) []cStore.ConsentRule {
+	var validRules []cStore.ConsentRule
+	for _, rule := range allRules {
+		// add if custodian is managed by this node
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Custodian});  key != "" {
+			validRules = append(validRules, rule)
+			continue
+		}
+		// or if the actor is managed by this node
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Actor}); key != "" {
+			validRules = append(validRules, rule)
+			continue
+		}
+	}
+
+	return validRules
 }
 
 func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) ([]cStore.ConsentRule) {
