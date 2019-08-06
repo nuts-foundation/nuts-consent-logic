@@ -266,7 +266,7 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	if rule.Custodian != expectedCustodian {
 		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
 	}
-	if rule.Actor != firstActor {
+	if rule.Actor != secondActor {
 		t.Errorf("expected actor with id: %s, got %s instead", secondActor, rule.Actor)
 	}
 	if rule.Subject != subject {
