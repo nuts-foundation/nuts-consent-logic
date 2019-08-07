@@ -57,7 +57,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
 		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
-		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil)
+		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
 		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)

@@ -95,7 +95,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 
 	{
-		if res, err := CustodianIsKnown(*createConsentRequest); !res || err != nil {
+		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
 			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
 			return nil, errors.New("custodian is not a known vendor")
 		}
@@ -515,7 +515,7 @@ func (cl ConsentLogic)filterConssentRules(allRules []cStore.ConsentRule) []cStor
 }
 
 // ConsentRulesFromFHIRRecord extracts a list of consent rules from a FHIR consent record encoded as json string.
-func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) ([]cStore.ConsentRule) {
+func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) []cStore.ConsentRule {
 	var consentRules []cStore.ConsentRule
 
 	fhirConsent := gojsonq.New().JSONString(fhirConsentString)
