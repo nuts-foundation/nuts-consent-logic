@@ -185,14 +185,14 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	defer ctrl.Finish()
 	publisherMock := mock.NewMockIEventPublisher(ctrl)
 
-	subjectId := "bsn:999999990"
-	custodianId := "agb:00000001"
-	party1Id := "agb:00000002"
-	performerId := "agb:00000007"
+	subjectID := "bsn:999999990"
+	custodianID := "agb:00000001"
+	party1ID := "agb:00000002"
+	performerID := "agb:00000007"
 
 	cryptoClient := pkg2.NewCryptoClient()
 
-	_ = cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianId})
+	_ = cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianID})
 
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)
@@ -205,17 +205,17 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	publicKeyId1 := string(pubBytes)
 
 	registryClient := mock3.NewMockRegistryClient(ctrl)
-	registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKeyId1}, nil)
+	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(&db.Organization{PublicKey: &publicKeyId1}, nil)
 
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
-	performer := IdentifierURI(performerId)
+	performer := IdentifierURI(performerID)
 	ccr := &CreateConsentRequest{
-		Actors:       []IdentifierURI{IdentifierURI(party1Id)},
+		Actors:       []IdentifierURI{IdentifierURI(party1ID)},
 		ConsentProof: nil,
-		Custodian:    IdentifierURI(custodianId),
+		Custodian:    IdentifierURI(custodianID),
 		Performer:    &performer,
 		Period:       &Period{Start: time.Now()},
-		Subject:      IdentifierURI(subjectId),
+		Subject:      IdentifierURI(subjectID),
 	}
 	event, err := cl.createNewConsentRequestEvent(ccr)
 	if err != nil {

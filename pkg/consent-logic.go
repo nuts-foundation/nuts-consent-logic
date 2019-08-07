@@ -72,6 +72,7 @@ func ConsentLogicInstance() *ConsentLogic {
 	return instance
 }
 
+// StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
 	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
 	if err != nil {
@@ -90,7 +91,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var fhirConsent string
-	var consentId string
+	var consentID string
 	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 
 	{
@@ -101,10 +102,10 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		logger().Debug("Custodian is known")
 	}
 	{
-		if consentId, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentId == "" || err != nil {
+		if consentID, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
 			fmt.Println(err)
-			// todo: report back the reason why the consentId could not be generated. Probably because the custodian is not managed by this node?
-			return nil, errors.New("could not create the consentId for this combination of subject and custodian")
+			// todo: report back the reason why the consentID could not be generated. Probably because the custodian is not managed by this node?
+			return nil, errors.New("could not create the consentID for this combination of subject and custodian")
 		}
 		logger().Debug("ConsentId generated")
 	}
@@ -149,7 +150,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 
 	payloadData := bridgeClient.FullConsentRequestState{
 		CipherText:    &cipherText,
-		ConsentId:     bridgeClient.ConsentId{ExternalId: &consentId},
+		ConsentId:     bridgeClient.ConsentId{ExternalId: &consentID},
 		LegalEntities: legalEntities,
 		Metadata:      &bridgeMeta,
 	}
@@ -177,7 +178,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		Name:                 events.EventConsentRequestConstructed,
 		InitiatorLegalEntity: string(createConsentRequest.Custodian),
 		RetryCount:           0,
-		ExternalId:           consentId,
+		ExternalId:           consentID,
 		Payload:              bsjs,
 	}
 	return event, nil
@@ -214,17 +215,17 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 			for _, signature := range crs.Signatures {
 				publicKey := signature.Signature.PublicKey
-				legalEntityId := signature.LegalEntity
-				legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityId))
+				legalEntityID := signature.LegalEntity
+				legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
 				if err != nil {
-					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityId, err)
+					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityID, err)
 					event.Error = &errorMsg
 					logger().Debug(errorMsg)
 					_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 					return
 				}
 				if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
-					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityId)
+					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityID)
 					logger().Debug(errorMsg)
 					logger().Debugf("publicKey from registry: %s ", *legalEntity.PublicKey)
 					logger().Debugf("publicKey from signature: %s ", publicKey)
@@ -280,12 +281,15 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 }
 
-func (cl ConsentLogic) SignConsentRequest(event *events.Event) {
+// HandleEventConsentRequestAcked handles the Event Consent Request Acked event. It passes a copy of the event to the
+// signing step and if everything is ok, it publishes this new event to ChannelConsentRequest.
+// In case of an error, it publishes the event to ChannelConsentErrored.
+func (cl ConsentLogic) HandleEventConsentRequestAcked(event *events.Event) {
 	var newEvent *events.Event
 	var err error
 
 	if newEvent, err = cl.signConsentRequest(*event); err != nil {
-		errorMsg := fmt.Sprintf("could nog sign request %v", err)
+		errorMsg := fmt.Sprintf("could not sign request %v", err)
 		event.Error = &errorMsg
 		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 	}
@@ -397,6 +401,9 @@ func (cl ConsentLogic) decryptConsentRecord(crs bridgeClient.FullConsentRequestS
 	return string(consentRecord), nil
 }
 
+// The node can manage more than one legalEntity. This method provides a deterministic way of selecting the current
+// legalEntity to work with. It loops over all legalEntities, selects the ones that still needs to sign and selects
+// the first one which is managed by this node.
 func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
 	// fill map with signatures legalEntity for easy lookup
 	attSignatures := make(map[string]bool)
@@ -421,9 +428,9 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyA
 	return ""
 }
 
-// AutoAckConsentRequest republishes every event as acked.
+// HandleEventConsentRequestValid republishes every event as acked.
 // TODO: This should be made optional so the ECD can perform checks and publish the ack or nack
-func (cl ConsentLogic) AutoAckConsentRequest(event *events.Event) {
+func (cl ConsentLogic) HandleEventConsentRequestValid(event *events.Event) {
 	event, _ = cl.autoAckConsentRequest(*event)
 	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 }
@@ -434,7 +441,10 @@ func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event,
 	return &newEvent, nil
 }
 
-func (cl ConsentLogic) StoreConsent(event *events.Event) {
+// HandleEventConsentDistributed handles EventConsentDistributed.
+// This is the final step in the distributed consent state-machine.
+// It decodes the payload, performs final tests and stores the relevant consentRules in the consent-store.
+func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 	crs := bridgeClient.FullConsentRequestState{}
 	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
 	if err != nil {
@@ -504,6 +514,7 @@ func (cl ConsentLogic)filterConssentRules(allRules []cStore.ConsentRule) []cStor
 	return validRules
 }
 
+// ConsentRulesFromFHIRRecord extracts a list of consent rules from a FHIR consent record encoded as json string.
 func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) ([]cStore.ConsentRule) {
 	var consentRules []cStore.ConsentRule
 
@@ -530,6 +541,8 @@ func (ConsentLogic) Configure() error {
 	return nil
 }
 
+// Start starts a new ConsentLogic engine. It populates the ConsentLogic struct with client from other engines and
+// subscribes to nats.io event.
 func (cl *ConsentLogic) Start() error {
 	cl.NutsCrypto = crypto.NewCryptoClient()
 	cl.NutsRegistry = registryClient.NewRegistryClient()
@@ -545,9 +558,9 @@ func (cl *ConsentLogic) Start() error {
 		events.ChannelConsentRequest,
 		map[string]events.EventHandlerCallback{
 			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
-			events.EventConsentRequestValid:               cl.AutoAckConsentRequest,
-			events.EventConsentRequestAcked:               cl.SignConsentRequest,
-			events.EventConsentDistributed:                cl.StoreConsent,
+			events.EventConsentRequestValid:               cl.HandleEventConsentRequestValid,
+			events.EventConsentRequestAcked:               cl.HandleEventConsentRequestAcked,
+			events.EventConsentDistributed:                cl.HandleEventConsentDistributed,
 		})
 	if err != nil {
 		panic(err)
@@ -555,6 +568,7 @@ func (cl *ConsentLogic) Start() error {
 	return nil
 }
 
+// Shutdown is currently a placeholder method. It an be used for unsubscription or other things.
 func (ConsentLogic) Shutdown() error {
 	// Stub
 	return nil
