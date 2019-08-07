@@ -26,13 +26,14 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/engine"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	engine3 "github.com/nuts-foundation/nuts-consent-store/engine"
+	engine4 "github.com/nuts-foundation/nuts-event-octopus/engine"
 	nutsgo "github.com/nuts-foundation/nuts-go/pkg"
 	engine2 "github.com/nuts-foundation/nuts-registry/engine"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"os"
 	"strings"
 )
-
 
 var serveCommand = &cobra.Command{
 	Use:   "serve",
@@ -42,7 +43,8 @@ var serveCommand = &cobra.Command{
 		server := echo.New()
 		server.HideBanner = true
 		server.Use(middleware.Logger())
-		api.RegisterHandlers(server, api.Wrapper{Cl: pkg.ConsentLogicInstance()})
+		instance := pkg.ConsentLogicInstance()
+		api.RegisterHandlers(server, api.Wrapper{Cl: instance})
 		addr := fmt.Sprintf("%s:%d", serverInterface, serverPort)
 		server.Logger.Fatal(server.Start(addr))
 	},
@@ -76,11 +78,14 @@ func Execute() {
 	consentStoreEngine := engine3.NewConsentStoreEngine()
 	nutsConfig.RegisterFlags(rootCommand, consentStoreEngine)
 
+	eventOctopusEngine := engine4.NewEventOctopusEngine()
+	nutsConfig.RegisterFlags(rootCommand, eventOctopusEngine)
+
 	if err := nutsConfig.Load(rootCommand); err != nil {
 		panic(err)
 	}
 
-	nutsConfig.PrintConfig()
+	nutsConfig.PrintConfig(logrus.StandardLogger())
 
 	if err := nutsConfig.InjectIntoEngine(consentLogicEngine); err != nil {
 		panic(err)
@@ -98,9 +103,19 @@ func Execute() {
 		panic(err)
 	}
 
-	consentLogicEngine.Start()
+	if err := eventOctopusEngine.Configure(); err != nil {
+		panic(err)
+	}
+
+	if err := eventOctopusEngine.Start(); err != nil {
+		panic(err)
+	}
 
 	if err := registryEngine.Configure(); err != nil {
+		panic(err)
+	}
+
+	if err := consentLogicEngine.Start(); err != nil {
 		panic(err)
 	}
 

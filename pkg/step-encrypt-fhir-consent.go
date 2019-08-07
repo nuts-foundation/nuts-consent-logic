@@ -20,7 +20,6 @@ package pkg
 
 import (
 	"fmt"
-	"github.com/labstack/gommon/log"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
@@ -35,15 +34,23 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		// get public key for actor
 		organization, err := registryClient.OrganizationById(string(actor))
 		if err != nil {
-			log.Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
+			logger().Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
 			return cryptoTypes.DoubleEncryptedCipherText{}, err
 		}
 		if organization.PublicKey == nil {
 			return cryptoTypes.DoubleEncryptedCipherText{}, fmt.Errorf("registry entry for organization %v does not contain a public key", actor)
 		}
 		pk := *organization.PublicKey
-		log.Debug("pk:", pk)
 		partyKeys = append(partyKeys, pk)
 	}
+
+	// and custodian
+	pk, err := cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
+	if err != nil {
+		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
+		return cryptoTypes.DoubleEncryptedCipherText{}, err
+	}
+	partyKeys = append(partyKeys, pk)
+
 	return cryptoClient.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
 }

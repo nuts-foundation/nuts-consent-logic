@@ -1,0 +1,176 @@
+openapi: 3.0.0
+info:
+  title: Nuts consent logic
+  version: 0.0.1
+  description: >
+    This service does most of the heavy lifting around creating consent. It depends on all the other components in *service space*.
+
+    For example, when creating a new consent request, this is send to the component it then checks if it's valid by using the validation component.
+
+    Next it has to find the correct organizations and encrypt the record with the right public keys.
+
+    Then it has to send the encrypted record to the Consent bridge for synchronization.
+
+
+    Also when a new consent event is received by the component from the consent bridge, it needs to decrypt it and check its validity.
+
+    If valid it has to be send to vendor space to check if the subject is really a patient for that care organization.
+security:
+  - bearerAuth: []
+paths:
+  '/api/consent':
+    post:
+      summary: Create a new consent.
+      description: |
+        During the initiation of a consent-flow, it performs the following steps:
+        * Check custodian is in the list of Vendors
+        * Get the consentId for the subject
+        * Create the FHIR Consent-resource
+        * Validate the FHIR Consent-resource
+        * Get a new shared key from _crypto service_
+        * Encrypt the FHIR Consent-resource with shared key
+        * For each actor: get the public key from registry
+        * For each actor: encrypt the shared key with actors public key
+        * Create request to consent bridge
+      operationId: nuts-consent-logic-create-consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateConsentRequest'
+
+      responses:
+        202:
+          description: |
+            Request received. This does not mean the consent is created. Check the resultCode for that. If the request was successful a job has been created which can be checked for status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobCreatedResponse'
+  '/api/consent/validation':
+    post:
+      summary: Create the validity of a consent-request job
+      description: |
+        The following steps are performed:
+        * Fetch the meta data of the consent request from the consent bridge
+        * Check for known active vendors in the actor list
+        * Download attachments from consent bridge
+        * For each known vendor:
+          * decrypt the shared key
+          * decrypt the FHIR consent resource with shared key
+          * Validate FHRI consent resource
+          * Check if the patient is known
+          * Sign the FHIR consent record with private key vendor
+      operationId: nuts-consent-logic-validate-consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsentValidationRequest'
+      responses:
+        '200':
+          description: Validation job created.
+          content:
+            'application/json':
+              schema:
+                $ref: '#/components/schemas/JobCreatedResponse'
+components:
+  schemas:
+    JobCreatedResponse:
+      type: object
+      properties:
+        resultCode:
+          type: string
+          enum: ["OK", "NOK"]
+        jobId:
+          type: string
+          example: '123'
+    ConsentValidationRequest:
+      type: object
+      properties:
+        consentId:
+          type: string
+          example: '87203b8f5b23f04c20b645b1121c6ed561b2d45c1d903083332b8b98ce0f7f10bc6bd7b2094bf8287a72246c3c1c318811e022b183eac9d1e1a4fcadeeb2c9e9'
+    CreateConsentRequest:
+      type: object
+      required:
+        - subject
+        - custodian
+        - actors
+      properties:
+        subject:
+          $ref: "#/components/schemas/SubjectURI"
+        custodian:
+          $ref: "#/components/schemas/CustodianURI"
+        actors:
+          description: >
+            A list of organizationIds which may access the patients
+            data. These organizations will take part in the consent
+            synchronization transactions.
+          type: array
+          items:
+            $ref: "#/components/schemas/ActorURI"
+          example:
+            - "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
+            - "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"
+
+        performer:
+          description: >
+            A cryptographic identiy of the performer, the
+            person who administers the consent. This field
+            is optional. If no performer can be identified
+            the consentProof field is mandatory.
+          $ref: "#/components/schemas/IdentifierURI"
+        consentProof:
+          description: The proof of the consent. E.g. a scan of a signed document, signed pdf or irma proof.
+          example:
+            contentType: 'application/pdf'
+            data: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
+          allOf:
+            - $ref: "#/components/schemas/EmbeddedData"
+        period:
+          $ref: "#/components/schemas/Period"
+    Period:
+      type: object
+      required:
+        - start
+      properties:
+        start:
+          type: string
+          format: date-time
+          example: "2019-05-20T17:02:33+10:00"
+        end:
+          type: string
+          format: date-time
+          example: "2019-11-20T17:02:33+10:00"
+    EmbeddedData:
+      type: object
+      required:
+        - data
+        - contentType
+      properties:
+        data:
+          type: string
+          description: Base64 encoded data with a content type
+          example: "UGxhaW4gdGV4dCBtZXNzYWdl"
+        contentType:
+          type: string
+          example: 'text/plain'
+    IdentifierURI:
+      type: string
+      description: "URI defining a party such as a person or organization"
+      example: "urn:oid:2.16.840.1.113883.2.4.6.1:#00000007"
+    ActorURI:
+      type: string
+      description: "URI defining the actor, usually a practitioner"
+      example: "urn:oid:2.16.840.1.113883.2.4.6.1:00000007"
+    CustodianURI:
+      type: string
+      description: "URI defining an organization, usually the custodian or actor"
+      example: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
+    SubjectURI:
+      type: string
+      description: "URI defining the data subject, usually the patient"
+      example: "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"

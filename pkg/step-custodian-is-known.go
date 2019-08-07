@@ -16,9 +16,18 @@
  *
  */
 
-
 package pkg
 
-func CustodianIsKnown(request CreateConsentRequest) (bool, error) {
+import (
+	"github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/types"
+)
+
+// CustodianIsKnown checks if the custodian from the request is managed by this node.
+// If not, the request cannot continue.
+func CustodianIsKnown(cryptoClient pkg.Client, request CreateConsentRequest) (bool, error) {
+	if pkey, _ := cryptoClient.PublicKey(types.LegalEntity{URI: string(request.Custodian)}); pkey == "" {
+		return false, nil
+	}
 	return true, nil
 }

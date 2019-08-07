@@ -16,8 +16,6 @@
  *
  */
 
-
-
 package pkg
 
 import (
@@ -32,5 +30,8 @@ func GetConsentId(cClient crypto.Client, request CreateConsentRequest) (string, 
 	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
 
 	id, err := cClient.ExternalIdFor([]byte(subject), legalEntity)
+	if err != nil {
+		return "", err
+	}
 	return hex.EncodeToString(id), err
 }

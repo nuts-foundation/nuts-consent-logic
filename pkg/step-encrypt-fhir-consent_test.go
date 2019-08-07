@@ -39,7 +39,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 	party2Id := "agb:00000003"
 
 	cryptoClient := types.NewCryptoClient()
-	cryptoClient.GenerateKeyPairFor(types2.LegalEntity{URI: custodianId})
+	_ = cryptoClient.GenerateKeyPairFor(types2.LegalEntity{URI: custodianId})
 	publicKey, _ := cryptoClient.PublicKey(types2.LegalEntity{URI: custodianId})
 
 	t.Run("it should encrypt the consent resource", func(tt *testing.T) {
@@ -67,8 +67,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, types2.LegalEntity{URI: custodianId},
-		)
+		}, types2.LegalEntity{URI: custodianId}, )
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}

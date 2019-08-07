@@ -16,7 +16,6 @@
  *
  */
 
-
 package pkg
 
 import (
@@ -26,10 +25,10 @@ import (
 type CreateConsentRequest struct {
 	Actors       []IdentifierURI
 	ConsentProof *EmbeddedData
-	Custodian IdentifierURI
-	Performer *IdentifierURI
-	Period    *Period
-	Subject   IdentifierURI
+	Custodian    IdentifierURI
+	Performer    *IdentifierURI
+	Period       *Period
+	Subject      IdentifierURI
 }
 
 // EmbeddedData defines component schema for EmbeddedData.
@@ -40,7 +39,7 @@ type EmbeddedData struct {
 
 // Period defines component schema for Period.
 type Period struct {
-	End   time.Time
+	End   *time.Time
 	Start time.Time
 }
 

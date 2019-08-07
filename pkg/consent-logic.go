@@ -20,15 +20,24 @@ package pkg
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
-	"github.com/nuts-foundation/nuts-registry/client"
+	eventClient "github.com/nuts-foundation/nuts-event-octopus/client"
+	events "github.com/nuts-foundation/nuts-event-octopus/pkg"
+	pkg2 "github.com/nuts-foundation/nuts-fhir-validation/pkg"
+	registryClient "github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/thedevsaddam/gojsonq.v2"
 	"sync"
 )
 
@@ -37,96 +46,529 @@ type ConsentLogicConfig struct {
 
 type ConsentLogicClient interface {
 	StartConsentFlow(*CreateConsentRequest) error
+	HandleIncomingCordaEvent(*events.Event)
 }
+
 type ConsentLogic struct {
 	NutsRegistry     pkg.RegistryClient
 	NutsCrypto       crypto.Client
 	NutsConsentStore cStore.ConsentStoreClient
+	NutsEventOctopus events.EventOctopusClient
 	Config           ConsentLogicConfig
+	EventPublisher   events.IEventPublisher
 }
 
 var instance *ConsentLogic
 var oneEngine sync.Once
 
+func logger() *logrus.Entry {
+	return logrus.StandardLogger().WithField("module", "consent-logic")
+}
+
 func ConsentLogicInstance() *ConsentLogic {
 	oneEngine.Do(func() {
-		instance = &ConsentLogic{
-		}
+		instance = &ConsentLogic{}
 	})
 	return instance
 }
 
+// StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
+	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
+	if err != nil {
+		return err
+	}
+
+	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	if err != nil {
+		return fmt.Errorf("error during publishing of event: %v", err)
+	}
+
+	logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
+	return nil
+}
+
+func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
+	var err error
 	var fhirConsent string
+	var consentID string
 	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 
 	{
-		if res, err := CustodianIsKnown(*createConsentRequest); !res || err != nil {
+		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
 			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
-			return errors.New("custodian is not a known vendor")
+			return nil, errors.New("custodian is not a known vendor")
 		}
-		logrus.Debug("Custodian is known")
+		logger().Debug("Custodian is known")
 	}
 	{
-		if res, err := GetConsentId(cl.NutsCrypto, *createConsentRequest); res == "" || err != nil {
+		if consentID, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
 			fmt.Println(err)
-			return errors.New("could not create the consentId for this combination of subject and custodian")
+			// todo: report back the reason why the consentID could not be generated. Probably because the custodian is not managed by this node?
+			return nil, errors.New("could not create the consentID for this combination of subject and custodian")
 		}
-		logrus.Debug("ConsentId generated")
+		logger().Debug("ConsentId generated")
 	}
 	{
-		var err error
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
-			return errors.New("could not create the FHIR consent resource")
+			return nil, errors.New("could not create the FHIR consent resource")
 		}
-		logrus.Debug("FHIR resource created")
+		logger().Debug("FHIR resource created")
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			return errors.New(fmt.Sprintf("the generated FHIR consent resource is invalid: %v", err))
+			return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
 		}
-		logrus.Debug("FHIR resource is valid")
+		logger().Debug("FHIR resource is valid")
 	}
 	{
-		var err error
 		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			return errors.New(fmt.Sprintf("could not encrypt consent resource for all involved parties: %v", err))
+			return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
 		}
-		logrus.Debug("FHIR resource encrypted", encryptedConsent)
+		logger().Debug("FHIR resource encrypted")
 	}
-	{
-		// Fixme: this should not be the the consent store but the consent bridge. But for the current demo, we use this since it is easier to set up.
-		ctx := context.Background()
+	var legalEntities []bridgeClient.Identifier
 
-		for _, actor := range createConsentRequest.Actors {
-			consentRule := []cStore.ConsentRule{{
-				Actor: string(actor),
-				Subject: string(createConsentRequest.Subject),
-				Resources: []cStore.Resource{{ResourceType: "Observation"}},
-				Custodian: string(createConsentRequest.Custodian),
-			}}
-			if err := cl.NutsConsentStore.RecordConsent(ctx, consentRule); err != nil {
-				return fmt.Errorf("could not record consent %v", err)
+	cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
+
+	bridgeMeta := bridgeClient.Metadata{
+		Domain: []bridgeClient.Domain{"medical"},
+		Period: bridgeClient.Period{
+			ValidFrom: createConsentRequest.Period.Start,
+			ValidTo:   createConsentRequest.Period.End,
+		},
+		SecureKey: bridgeClient.SymmetricKey{
+			Alg: "AES_GCM", //todo: fix hardcoded alg
+			Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
+		},
+	}
+
+	for _, entity := range createConsentRequest.Actors {
+		legalEntities = append(legalEntities, bridgeClient.Identifier(entity))
+	}
+	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
+
+	payloadData := bridgeClient.FullConsentRequestState{
+		CipherText:    &cipherText,
+		ConsentId:     bridgeClient.ConsentId{ExternalId: &consentID},
+		LegalEntities: legalEntities,
+		Metadata:      &bridgeMeta,
+	}
+
+	alg := "RSA-OAEP"
+	for i := range encryptedConsent.CipherTextKeys {
+		ctBase64 := base64.StdEncoding.EncodeToString(encryptedConsent.CipherTextKeys[i])
+		payloadData.Metadata.OrganisationSecureKeys = append(payloadData.Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
+			Alg:         &alg,
+			CipherText:  &ctBase64,
+			LegalEntity: legalEntities[i],
+		})
+	}
+
+	sjs, err := json.Marshal(payloadData)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshall NewConsentRequest to json: %v", err)
+	}
+	bsjs := base64.StdEncoding.EncodeToString(sjs)
+
+	//logger().Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
+
+	event := &events.Event{
+		Uuid:                 uuid.NewV4().String(),
+		Name:                 events.EventConsentRequestConstructed,
+		InitiatorLegalEntity: string(createConsentRequest.Custodian),
+		RetryCount:           0,
+		ExternalId:           consentID,
+		Payload:              bsjs,
+	}
+	return event, nil
+}
+
+// HandleIncomingCordaEvent auto-acks ConsentRequests with the missing signatures
+// * Get the consentRequestState by id from the consentBridge
+// * For each legalEntity get its public key
+func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
+	logger().Infof("received event %v", event)
+
+	crs := bridgeClient.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		errorDescription := "Could not base64 decode event payload"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
+		// have event-octopus handle redelivery or cancellation
+		errorDescription := "Could not unmarshall event payload"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		return
+	}
+
+	// check if all parties signed all attachments, than this request can be finalized by the initiator
+	if len(crs.Signatures) == len(crs.LegalEntities) {
+		logger().Debugf("All signatures present for UUID: %s", event.ConsentId)
+		// are we the initiator? InitiatorLegalEntity is only set at the initiating node.
+		if event.InitiatorLegalEntity != "" {
+
+			for _, signature := range crs.Signatures {
+				publicKey := signature.Signature.PublicKey
+				legalEntityID := signature.LegalEntity
+				legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
+				if err != nil {
+					errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityID, err)
+					event.Error = &errorMsg
+					logger().Debug(errorMsg)
+					_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
+					return
+				}
+				if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
+					errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityID)
+					logger().Debug(errorMsg)
+					logger().Debugf("publicKey from registry: %s ", *legalEntity.PublicKey)
+					logger().Debugf("publicKey from signature: %s ", publicKey)
+					event.Error = &errorMsg
+					_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+					return
+				}
+			}
+
+			logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
+			event.Name = events.EventAllSignaturesPresent
+			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+		} else {
+			logger().Debug("This node is not the initiator. Lets wait for the initiator to broadcast EventAllSignaturesPresent")
+		}
+		return
+	}
+
+	logger().Debugf("Handling ConsentRequestState: %+v", crs)
+
+	// find out which legal entity is ours and still needs signing? It can be more than one, but always take first one missing.
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+
+	// is there work for us?
+	if legalEntityToSignFor == "" {
+		// nothing to sign for this node. We are done.
+		return
+	}
+
+	// decrypt
+	// =======
+	fhirConsent, err := cl.decryptConsentRecord(crs, legalEntityToSignFor)
+	if err != nil {
+		errorDescription := "Could not decrypt consent record"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		return
+	}
+
+	// validate consent record
+	// =======================
+	if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+		errorDescription := "Consent record invalid"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+
+	// publish EventConsentRequestValid
+	// ===========================
+	event.Name = events.EventConsentRequestValid
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+// HandleEventConsentRequestAcked handles the Event Consent Request Acked event. It passes a copy of the event to the
+// signing step and if everything is ok, it publishes this new event to ChannelConsentRequest.
+// In case of an error, it publishes the event to ChannelConsentErrored.
+func (cl ConsentLogic) HandleEventConsentRequestAcked(event *events.Event) {
+	var newEvent *events.Event
+	var err error
+
+	if newEvent, err = cl.signConsentRequest(*event); err != nil {
+		errorMsg := fmt.Sprintf("could not sign request %v", err)
+		event.Error = &errorMsg
+		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+	}
+	newEvent.Name = events.EventAttachmentSigned
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *newEvent)
+}
+
+func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, error) {
+	crs := bridgeClient.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		errorDescription := "Could not base64 decode event payload"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
+		// have event-octopus handle redelivery or cancellation
+		errorDescription := "Could not unmarshall event payload"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+	if len(crs.AttachmentHashes) != 1 {
+		errorDescription := "Expected exactly one ConsentRecordHash"
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
+	consentRecordHash := crs.AttachmentHashes[0]
+	logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
+
+	pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	if err != nil {
+		logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
+		return nil, err
+	}
+	hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
+	if err != nil {
+		logger().Errorf("Could not decode consentRecordHash into hex value %s: %v", consentRecordHash, err)
+		return nil, err
+	}
+	sigBytes, err := cl.NutsCrypto.SignFor(hexConsentRecordHash, cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+	if err != nil {
+		errorDescription := fmt.Sprintf("Could not sign consent record for %s, err: %v", legalEntityToSignFor, err)
+		event.Error = &errorDescription
+		logger().WithError(err).Error(errorDescription)
+		return &event, err
+	}
+	encodedSignatureBytes := base64.StdEncoding.EncodeToString(sigBytes)
+	partySignature := bridgeClient.PartyAttachmentSignature{
+		Attachment:  consentRecordHash,
+		LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
+		Signature: bridgeClient.SignatureWithKey{
+			Data:      encodedSignatureBytes,
+			PublicKey: pubKey,
+		},
+	}
+
+	payload, err := json.Marshal(partySignature)
+	if err != nil {
+		return nil, err
+	}
+	event.Payload = base64.StdEncoding.EncodeToString(payload)
+	logger().Debugf("Consent request signed for %s", legalEntityToSignFor)
+
+	return &event, nil
+}
+
+func (cl ConsentLogic) decryptConsentRecord(crs bridgeClient.FullConsentRequestState, legalEntity string) (string, error) {
+	encodedCipherText := crs.CipherText
+	cipherText, err := base64.StdEncoding.DecodeString(*encodedCipherText)
+	// convert hex string of attachment to bytes
+	if err != nil {
+		return "", err
+	}
+
+	if crs.Metadata == nil {
+		err := errors.New("missing metadata in consentRequest")
+		logger().Error(err)
+		return "", err
+	}
+
+	var encodedLegalEntityKey string
+	for _, value := range crs.Metadata.OrganisationSecureKeys {
+		if value.LegalEntity == bridgeClient.Identifier(legalEntity) {
+			encodedLegalEntityKey = *value.CipherText
+		}
+	}
+
+	if encodedLegalEntityKey == "" {
+		return "", fmt.Errorf("no key found for legalEntity: %s", legalEntity)
+	}
+	legalEntityKey, _ := base64.StdEncoding.DecodeString(encodedLegalEntityKey)
+
+	nonce, _ := base64.StdEncoding.DecodeString(crs.Metadata.SecureKey.Iv)
+	dect := cryptoTypes.DoubleEncryptedCipherText{
+		CipherText:     cipherText,
+		CipherTextKeys: [][]byte{legalEntityKey},
+		Nonce:          nonce,
+	}
+	consentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
+	if err != nil {
+		logger().WithError(err).Error("Could not decrypt consent record")
+		return "", err
+	}
+
+	return string(consentRecord), nil
+}
+
+// The node can manage more than one legalEntity. This method provides a deterministic way of selecting the current
+// legalEntity to work with. It loops over all legalEntities, selects the ones that still needs to sign and selects
+// the first one which is managed by this node.
+func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
+	// fill map with signatures legalEntity for easy lookup
+	attSignatures := make(map[string]bool)
+	for _, att := range signatures {
+		attSignatures[string(att.LegalEntity)] = true
+	}
+
+	// Find all LegalEntities managed by this node which still need a signature
+	// for each legal entity...
+	for _, ent := range identifiers {
+		// ... check if it has already signed the request
+		if !attSignatures[string(ent)] {
+			// if not, if this node manages the public key, than it is our identity.
+			key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(ent)})
+			if len(key) != 0 {
+				// yes, so lets add it to the missingSignatures so we can sign it in the next step
+				logger().Debugf("found first entity to sign for: %v", ent)
+				return string(ent)
 			}
 		}
-		logrus.Debug("Consent recorded for actor")
+	}
+	return ""
+}
 
+// HandleEventConsentRequestValid republishes every event as acked.
+// TODO: This should be made optional so the ECD can perform checks and publish the ack or nack
+func (cl ConsentLogic) HandleEventConsentRequestValid(event *events.Event) {
+	event, _ = cl.autoAckConsentRequest(*event)
+	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+}
+
+func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event, error) {
+	newEvent := event
+	newEvent.Name = events.EventConsentRequestAcked
+	return &newEvent, nil
+}
+
+// HandleEventConsentDistributed handles EventConsentDistributed.
+// This is the final step in the distributed consent state-machine.
+// It decodes the payload, performs final tests and stores the relevant consentRules in the consent-store.
+func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
+	crs := bridgeClient.FullConsentRequestState{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	if err != nil {
+		logger().Errorf("Unable to base64 decode event payload")
+		return
+	}
+	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
+		logger().Errorf("Unable to unmarshal event payload")
+		return
 	}
 
-	return nil
+	var consentRules []cStore.ConsentRule
+
+	for _, actor := range crs.LegalEntities {
+		publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(actor)})
+		if err != nil || publicKey == "" {
+			// this actor is not managed by this node, try with next
+			continue
+		}
+
+		fhirConsentString, err := cl.decryptConsentRecord(crs, string(actor))
+		if err != nil {
+			logger().Error("Could not decrypt fhir consent")
+			return
+		}
+
+		// todo: check everything for validity again
+		consentRules = cl.ConsentRulesFromFHIRRecord(fhirConsentString)
+
+		// consentrules gathered, continue with the flow
+		break
+	}
+
+	consentRules = cl.filterConssentRules(consentRules)
+
+	logger().Debugf("Storing consent: %+v", consentRules)
+	err = cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
+	if err !=  nil {
+		logger().WithError(err).Error("unable to record the consents")
+		return
+	}
+
+	event.Name = events.EventCompleted
+	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	if err != nil {
+		logger().WithError(err).Error("unable to publish the EventCompleted event")
+		return
+	}
+}
+
+// only consent records of which or the custodian or the actor is managed by this node should be stored
+func (cl ConsentLogic)filterConssentRules(allRules []cStore.ConsentRule) []cStore.ConsentRule {
+	var validRules []cStore.ConsentRule
+	for _, rule := range allRules {
+		// add if custodian is managed by this node
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Custodian});  key != "" {
+			validRules = append(validRules, rule)
+			continue
+		}
+		// or if the actor is managed by this node
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Actor}); key != "" {
+			validRules = append(validRules, rule)
+			continue
+		}
+	}
+
+	return validRules
+}
+
+// ConsentRulesFromFHIRRecord extracts a list of consent rules from a FHIR consent record encoded as json string.
+func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) []cStore.ConsentRule {
+	var consentRules []cStore.ConsentRule
+
+	fhirConsent := gojsonq.New().JSONString(fhirConsentString)
+
+	actors := pkg2.ActorsFrom(fhirConsent)
+	custodian := pkg2.CustodianFrom(fhirConsent)
+	subject := pkg2.SubjectFrom(fhirConsent)
+	resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
+
+	for _, actor := range actors {
+		consentRules = append(consentRules, cStore.ConsentRule{
+			Actor:     string(actor),
+			Custodian: custodian,
+			Resources: resources,
+			Subject:   subject,
+		})
+	}
+
+	return consentRules
 }
 
 func (ConsentLogic) Configure() error {
 	return nil
 }
 
+// Start starts a new ConsentLogic engine. It populates the ConsentLogic struct with client from other engines and
+// subscribes to nats.io event.
 func (cl *ConsentLogic) Start() error {
 	cl.NutsCrypto = crypto.NewCryptoClient()
-	cl.NutsRegistry = client.NewRegistryClient()
+	cl.NutsRegistry = registryClient.NewRegistryClient()
 	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
+	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()
+	publisher, err := cl.NutsEventOctopus.EventPublisher("consent-logic")
+	if err != nil {
+		logger().WithError(err).Panic("Could not subscribe to event publisher")
+	}
+	cl.EventPublisher = publisher
+
+	err = cl.NutsEventOctopus.Subscribe("consent-logic",
+		events.ChannelConsentRequest,
+		map[string]events.EventHandlerCallback{
+			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
+			events.EventConsentRequestValid:               cl.HandleEventConsentRequestValid,
+			events.EventConsentRequestAcked:               cl.HandleEventConsentRequestAcked,
+			events.EventConsentDistributed:                cl.HandleEventConsentDistributed,
+		})
+	if err != nil {
+		panic(err)
+	}
 	return nil
 }
 
+// Shutdown is currently a placeholder method. It an be used for unsubscription or other things.
 func (ConsentLogic) Shutdown() error {
 	// Stub
 	return nil

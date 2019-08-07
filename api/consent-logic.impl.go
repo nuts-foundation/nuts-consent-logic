@@ -19,9 +19,11 @@
 package api
 
 import (
+	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"net/http"
+	"time"
 )
 
 // Wrapper provides the implementation of the generated ServerInterface
@@ -34,6 +36,14 @@ func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshal json body:", err)
+		return err
+	}
+
+	nullTime := time.Time{}
+
+	if createConsentApiRequest.Period.Start == nullTime {
+		err := errors.New("period.start time is required")
+		ctx.Logger().Error(err)
 		return err
 	}
 
