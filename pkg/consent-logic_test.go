@@ -202,10 +202,10 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 		Type:  "PUBLIC KEY",
 		Bytes: pubASN1,
 	})
-	publicKeyId1 := string(pubBytes)
+	publicKeyID1 := string(pubBytes)
 
 	registryClient := mock3.NewMockRegistryClient(ctrl)
-	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(&db.Organization{PublicKey: &publicKeyId1}, nil)
+	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(&db.Organization{PublicKey: &publicKeyID1}, nil)
 
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
 	performer := IdentifierURI(performerID)
