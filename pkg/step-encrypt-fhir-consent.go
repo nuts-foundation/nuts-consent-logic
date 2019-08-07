@@ -34,7 +34,7 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 		// get public key for actor
 		organization, err := registryClient.OrganizationById(string(actor))
 		if err != nil {
-			Logger().Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
+			logger().Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
 			return cryptoTypes.DoubleEncryptedCipherText{}, err
 		}
 		if organization.PublicKey == nil {
@@ -47,7 +47,7 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 	// and custodian
 	pk, err := cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
 	if err != nil {
-		Logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
+		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
 	partyKeys = append(partyKeys, pk)
