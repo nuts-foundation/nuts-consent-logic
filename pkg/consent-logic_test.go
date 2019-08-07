@@ -223,7 +223,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	}
 
 	crs := api.FullConsentRequestState{}
-	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
+	decodedPayload, _ := base64.StdEncoding.DecodeString(event.Payload)
 	_ = json.Unmarshal(decodedPayload, &crs)
 
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
@@ -339,7 +339,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 
 	// decode payload
 	pas := api.PartyAttachmentSignature{}
-	decodedPayload, err := base64.StdEncoding.DecodeString(newEvent.Payload)
+	decodedPayload, _ := base64.StdEncoding.DecodeString(newEvent.Payload)
 	_ = json.Unmarshal(decodedPayload, &pas)
 
 	// Check all the values

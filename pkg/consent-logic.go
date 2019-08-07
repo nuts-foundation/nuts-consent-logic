@@ -471,10 +471,18 @@ func (cl ConsentLogic) StoreConsent(event *events.Event) {
 	consentRules = cl.filterConssentRules(consentRules)
 
 	Logger().Debugf("Storing consent: %+v", consentRules)
-	cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
+	err = cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
+	if err !=  nil {
+		Logger().WithError(err).Error("unable to record the consents")
+		return
+	}
 
 	event.Name = events.EventCompleted
-	cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+	if err != nil {
+		Logger().WithError(err).Error("unable to publish the EventCompleted event")
+		return
+	}
 }
 
 // only consent records of which or the custodian or the actor is managed by this node should be stored
