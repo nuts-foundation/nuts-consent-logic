@@ -23,6 +23,7 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -301,6 +302,63 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 			t.Errorf("expected different actor, got: %s", filteredRules[1].Actor)
 		}
 	})
+}
+
+func TestConsentLogic_SignConsentRequest(t *testing.T) {
+	legalEntity := "00000001"
+	hexEncodedHash := []byte("attachmenthash123abc")
+	consentRecordHash := hex.EncodeToString(hexEncodedHash)
+
+	// setup the mocks
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cryptoMock := mock2.NewMockClient(ctrl)
+	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: legalEntity}).AnyTimes().Return("key of 1", nil)
+	cryptoMock.EXPECT().SignFor(hexEncodedHash, gomock.Eq(types.LegalEntity{URI: legalEntity})).Return([]byte("signedBytes"), nil)
+
+	// prepare method parameter
+	event := pkg.Event{}
+	fcrs := api.FullConsentRequestState{
+		LegalEntities:    []api.Identifier{api.Identifier(legalEntity)},
+		AttachmentHashes: []string{consentRecordHash},
+	}
+	payload, _ := json.Marshal(fcrs)
+	event.Payload = base64.StdEncoding.EncodeToString(payload)
+
+	// make the actual request
+	cl := ConsentLogic{NutsCrypto: cryptoMock}
+	newEvent, err := cl.signConsentRequest(event)
+
+	// check for errors
+	if err != nil {
+		t.Fatalf("did not expected error: %s", err)
+	}
+	if newEvent.Error != nil {
+		t.Errorf("did not expected error: %s", *newEvent.Error)
+	}
+
+	// decode payload
+	pas := api.PartyAttachmentSignature{}
+	decodedPayload, err := base64.StdEncoding.DecodeString(newEvent.Payload)
+	_ = json.Unmarshal(decodedPayload, &pas)
+
+	// Check all the values
+	if string(pas.LegalEntity) != "00000001" {
+		t.Error("expected signature")
+	}
+
+	if pas.Signature.PublicKey != "key of 1" {
+		t.Error("expected payload.signature.publicKey to be set")
+	}
+
+	encodedSignatureBytes := base64.StdEncoding.EncodeToString([]byte("signedBytes"))
+	if pas.Signature.Data != encodedSignatureBytes {
+		t.Errorf("expected payload.signature.Data to be the signature %+v. got %+v", encodedSignatureBytes, pas.Signature.Data)
+	}
+
+	if pas.Attachment != consentRecordHash {
+		t.Error("expected payload.Attachment to be set")
+	}
 }
 
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {

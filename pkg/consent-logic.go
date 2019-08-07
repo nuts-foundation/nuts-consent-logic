@@ -310,6 +310,12 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		return &event, nil
 	}
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
+	if len(crs.AttachmentHashes) != 1 {
+		errorDescription := "Expected exactly one ConsentRecordHash"
+		event.Error = &errorDescription
+		Logger().WithError(err).Error(errorDescription)
+		return &event, nil
+	}
 	consentRecordHash := crs.AttachmentHashes[0]
 	Logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
