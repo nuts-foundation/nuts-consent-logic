@@ -19,6 +19,7 @@
 package pkg
 
 import (
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
@@ -29,6 +30,7 @@ import (
 	"errors"
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
+	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
 	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
 	mock2 "github.com/nuts-foundation/nuts-crypto/mock"
 	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
@@ -197,7 +199,7 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)
 	pub := key.PublicKey
-	pubASN1 := x509.MarshalPKCS1PublicKey(&pub)
+	pubASN1, _ := x509.MarshalPKIXPublicKey(&pub)
 	pubBytes := pem.EncodeToMemory(&pem.Block{
 		Type:  "PUBLIC KEY",
 		Bytes: pubASN1,
@@ -244,7 +246,7 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		Actor:     "00000003",
 	}}
 
-	t.Run("current node manges one actor", func(t *testing.T) {
+	t.Run("current node manges one actor: 00000002", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
@@ -374,10 +376,10 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 		t.Errorf("Expected 2 rules, got %d instead", len(consentRules))
 	}
 
-	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.3:00000000"
-	firstActor := "urn:oid:2.16.840.1.113883.2.4.6.3:00000001"
-	secondActor := "urn:oid:2.16.840.1.113883.2.4.6.3:00000002"
-	subject := "urn:oid:2.16.840.1.113883.2.4.6.1:999999990"
+	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
+	firstActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
+	secondActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"
+	subject := "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
 
 	rule := consentRules[0]
 	if rule.Custodian != expectedCustodian {

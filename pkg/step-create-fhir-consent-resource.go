@@ -48,7 +48,7 @@ const template = `
   ],
   "patient": {
     "identifier": {
-      "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
       "value": "{{subjectBsn}}"
     }
   },
@@ -56,14 +56,14 @@ const template = `
   "performer": [{
     "type": "Organization",
     "identifier": {
-      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
       "value": "{{performerId}}"
     }
   }],
   {{/performerId}}
   "organization": [{
     "identifier": {
-      "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
+      "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
       "value": "{{custodianAgb}}"
     }
   }],
@@ -78,7 +78,7 @@ const template = `
     "verifiedWith": {
       "type": "Patient",
       "identifier": {
-        "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
+        "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
         "value": "{{subjectBsn}}"
       }
     }
@@ -105,7 +105,7 @@ const template = `
         },
         "reference": {
           "identifier": {
-            "system": "urn:oid:2.16.840.1.113883.2.4.6.3",
+            "system": "urn:oid:2.16.840.1.113883.2.4.6.1",
             "value": "{{.}}"
           }
         }

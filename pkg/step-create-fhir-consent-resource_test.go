@@ -36,7 +36,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 		t.Error(err)
 	}
 
-	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.3:00000003")
+	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.1:00000003")
 
 	endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
@@ -50,11 +50,11 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			"it can create a valid consent",
 			args{
 				CreateConsentRequest{
-					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.1:999999990",
-					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.3:00000000",
+					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.3:999999990",
+					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
 					Actors: []IdentifierURI{
-						"urn:oid:2.16.840.1.113883.2.4.6.3:00000001",
-						"urn:oid:2.16.840.1.113883.2.4.6.3:00000002",
+						"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
+						"urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
 					},
 					Period: &Period{
 						Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
