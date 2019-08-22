@@ -406,3 +406,40 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 
 	}
 }
+
+func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cryptoMock := mock2.NewMockClient(ctrl)
+	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return("key of 0", nil)
+	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return("", nil)
+
+	validConsent, err := ioutil.ReadFile("../test-data/fhir-consent.json")
+	if err != nil {
+		t.Error(err)
+	}
+	cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).Return(validConsent, nil)
+
+	consentStoreMock := mock4.NewMockConsentStoreClient(ctrl)
+	consentRules := []pkg3.ConsentRule{{
+		ID:        0,
+		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
+		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
+		Resources: []pkg3.Resource{{ConsentRuleID: 0, ResourceType: "Observation"}},
+		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
+	}}
+	consentStoreMock.EXPECT().RecordConsent(context.Background(), consentRules).Return(nil)
+
+	publisherMock := mock.NewMockIEventPublisher(ctrl)
+	publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+
+	cl := &ConsentLogic{NutsCrypto: cryptoMock, NutsConsentStore: consentStoreMock, EventPublisher: publisherMock}
+	eventConsentDistributed, err := ioutil.ReadFile("../test-data/distributed_event")
+	if err != nil {
+		t.Error(err)
+	}
+	event := &pkg.Event{
+		Payload: string(eventConsentDistributed),
+	}
+	cl.HandleEventConsentDistributed(event)
+}

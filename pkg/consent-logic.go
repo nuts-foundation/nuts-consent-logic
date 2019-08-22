@@ -113,7 +113,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
 			return nil, errors.New("could not create the FHIR consent resource")
 		}
-		logger().Debug("FHIR resource created")
+		logger().Debug("FHIR resource created", fhirConsent)
 	}
 	{
 		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
@@ -458,14 +458,14 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 
 	var consentRules []cStore.ConsentRule
 
-	for _, actor := range crs.LegalEntities {
-		publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(actor)})
+	for _, organisation := range crs.Metadata.OrganisationSecureKeys{
+		publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)})
 		if err != nil || publicKey == "" {
-			// this actor is not managed by this node, try with next
+			// this organisation is not managed by this node, try with next
 			continue
 		}
 
-		fhirConsentString, err := cl.decryptConsentRecord(crs, string(actor))
+		fhirConsentString, err := cl.decryptConsentRecord(crs, string(organisation.LegalEntity))
 		if err != nil {
 			logger().Error("Could not decrypt fhir consent")
 			return
@@ -479,6 +479,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 	}
 
 	consentRules = cl.filterConssentRules(consentRules)
+	logger().Debugf("found %d consent rules", len(consentRules))
 
 	logger().Debugf("Storing consent: %+v", consentRules)
 	err = cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
