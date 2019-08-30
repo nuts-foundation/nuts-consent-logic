@@ -100,7 +100,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		//consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
-		consentRequestState.CipherText = &foo
+		consentRequestState.ConsentRecords = []api.ConsentRecord{
+			{
+				CipherText:     &foo,
+			},
+		}
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
 
@@ -119,10 +123,14 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"})
 		defer ctrl.Finish()
-		consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		foo := "foo"
-		consentRequestState.CipherText = &foo
+		consentRequestState.ConsentRecords = []api.ConsentRecord{
+		{
+				CipherText: &foo,
+				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+			},
+		}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -138,7 +146,6 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 	t.Run("not all signatures set, and remaining LegalEntity managed by this node and valid content should broadcast all checks passed", func(t *testing.T) {
 		fooEncoded := base64.StdEncoding.EncodeToString([]byte("foo"))
-		consentRequestState.CipherText = &fooEncoded
 
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
@@ -146,13 +153,18 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 
 		cypherText2 := "cyphertext for 00000002"
-		consentRequestState.Metadata = &api.Metadata{
-			OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
+		consentRequestState.ConsentRecords = []api.ConsentRecord{
+			{
+				CipherText: &fooEncoded,
+				Metadata: &api.Metadata{
+					OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
+				},
+				// 00000001 already signed
+				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+			},
 		}
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
-		// 00000001 already signed
-		consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		// 00000002 is managed by this node
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"}).Return("public key of urn:agb:00000002", nil)
 
@@ -228,8 +240,8 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	decodedPayload, _ := base64.StdEncoding.DecodeString(event.Payload)
 	_ = json.Unmarshal(decodedPayload, &crs)
 
-	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.Signatures, crs.LegalEntities)
-	_, err = cl.decryptConsentRecord(crs, legalEntityToSignFor)
+	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.ConsentRecords[0].Signatures, crs.LegalEntities)
+	_, err = cl.decryptConsentRecord(crs.ConsentRecords[0], legalEntityToSignFor)
 
 	if err != nil {
 		t.Error("Could not decrypt consent", err)
@@ -255,7 +267,7 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConssentRules(allRules)
+		filteredRules := cl.filterConsentRules(allRules)
 		if len(filteredRules) != 1 {
 			t.Errorf("Expected only one valid rule")
 		}
@@ -273,7 +285,7 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConssentRules(allRules)
+		filteredRules := cl.filterConsentRules(allRules)
 		if len(filteredRules) != 2 {
 			t.Errorf("Expected two valid rules")
 		}
@@ -293,7 +305,7 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConssentRules(allRules)
+		filteredRules := cl.filterConsentRules(allRules)
 		if len(filteredRules) != 2 {
 			t.Errorf("Expected two valid rules")
 		}
@@ -322,7 +334,11 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	event := pkg.Event{}
 	fcrs := api.FullConsentRequestState{
 		LegalEntities:    []api.Identifier{api.Identifier(legalEntity)},
-		AttachmentHashes: []string{consentRecordHash},
+		ConsentRecords: []api.ConsentRecord{
+			{
+				AttachmentHash: &consentRecordHash,
+			},
+		},
 	}
 	payload, _ := json.Marshal(fcrs)
 	event.Payload = base64.StdEncoding.EncodeToString(payload)
