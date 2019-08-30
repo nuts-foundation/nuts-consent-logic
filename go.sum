@@ -279,6 +279,11 @@ github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190708190506-eeaa52
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190709085641-90bfbc00ad4b/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731150722-f01025854f51 h1:GlAkZbDoCLrHcJVzQV1SyMHRvfVLRHsJ0TGeHVLRS28=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190731150722-f01025854f51/go.mod h1:wsj0vKVR9b58O/JksKw/xP0dFXsXw7+5LqELIe7lW14=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830073206-443b337d86fd h1:43jt/GlPA4GEb+DvazyR4gicMc694cDwkJyircXq+j8=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830073447-588f8d0316b4 h1:2t/yFTbGIomfqaCYj5iOcFWM+1sBAsvnFBtJHWmnnMI=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830073447-588f8d0316b4/go.mod h1:gYFt7e6N19M+9EaLCipcDEuzT3xVA7dQRCTQH3hP4o0=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830112201-98ee205e7ba6 h1:IU7U7fuOez6to1+jIpy3sRF2CUq436lhVwcFv6dbln8=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830112201-98ee205e7ba6/go.mod h1:gYFt7e6N19M+9EaLCipcDEuzT3xVA7dQRCTQH3hP4o0=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12 h1:qkvfEi4ftwT3OvB/FrPV+a+ksyqKgWiXp82kgZ1y5R0=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12/go.mod h1:Ps3MsC6diRRJkImRANrSkPtu3fE46HKUrwiN+KMyIRk=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190812143022-f2e07f213e77/go.mod h1:8voL1K4TtKEyF05dX2UP70KVnUcgcGWoqjYT7H+ckfw=
