@@ -470,7 +470,7 @@ func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event,
 // This is the final step in the distributed consent state-machine.
 // It decodes the payload, performs final tests and stores the relevant consentRules in the consent-store.
 func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
-	crs := bridgeClient.FullConsentRequestState{}
+	crs := bridgeClient.ConsentState{}
 	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
 	if err != nil {
 		logger().Errorf("Unable to base64 decode event payload")

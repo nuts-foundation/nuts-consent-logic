@@ -7,7 +7,7 @@ require (
 	github.com/deepmap/oapi-codegen v1.1.6
 	github.com/golang/mock v1.3.1
 	github.com/labstack/echo/v4 v4.1.5
-	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830073447-588f8d0316b4
+	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830112201-98ee205e7ba6
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190822100623-3ab0e430cd0c
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20190716073802-a38bca119a4e
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190802065349-795d5feef66b
