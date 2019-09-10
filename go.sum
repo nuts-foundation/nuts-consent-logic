@@ -316,6 +316,10 @@ github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81 h1:uSl
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190613193010-545e56495b81/go.mod h1:eaVqlVjkIpqVec8N9HOGw9whacuCbBOO0O0cUCbRgxU=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190716073802-a38bca119a4e h1:zz30uNnSeKdKWArQ1H3ELIym7i/dUeVcvufY6qF1eQ4=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190716073802-a38bca119a4e/go.mod h1:SBZGEhqTfL4X1ZMdRdWhzcaMgK1HeFWHjIGNZXOGw2w=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190910112818-33d07b346884 h1:btb1gceLJwDc2qgatz0JhYu8sSf3peQ3EqRv5vbD7ZQ=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190910112818-33d07b346884/go.mod h1:9ziwl2scJa+O+zs+BWrqAnMDiSt/z4Cov+SmNiUtP2g=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190910114200-6a76ac13c9db h1:DJu9PwZEbWojWPO/hS0pkkYDQxhzs0/XZQ+skoxd8c0=
+github.com/nuts-foundation/nuts-crypto v0.0.0-20190910114200-6a76ac13c9db/go.mod h1:9ziwl2scJa+O+zs+BWrqAnMDiSt/z4Cov+SmNiUtP2g=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190701143801-e72e48a124c8 h1:o11BJPUOa2LMRPljH0Exg1G4sqtsmjZR4kMpejviyWc=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190701143801-e72e48a124c8/go.mod h1:+173Ep/pFKsWnjVeLo4vW7nZj9YCQSS4ghL2ScTgvoU=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190709092026-43547905a20e/go.mod h1:KNLU0a8E//4NzRRqU3EGCCt7ECcZfnJ4Gxq1rYYwTAI=
@@ -520,6 +524,8 @@ golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6 h1:FP8hkuE6yUEaJnK7O2eTuejKW
 golang.org/x/net v0.0.0-20190424112056-4829fb13d2c6/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
 golang.org/x/net v0.0.0-20190522155817-f3200d17e092 h1:4QSRKanuywn15aTZvI/mIDEgPQpswuFndXpOj3rKEco=
 golang.org/x/net v0.0.0-20190522155817-f3200d17e092/go.mod h1:HSz+uSET+XFnRR8LxR5pz3Of3rY3CfYBVs4xY44aLks=
+golang.org/x/net v0.0.0-20190607181551-461777fb6f67 h1:rJJxsykSlULwd2P2+pg/rtnwN2FrWp4IuCxOSyS0V00=
+golang.org/x/net v0.0.0-20190607181551-461777fb6f67/go.mod h1:z5CRVTTTmAJ677TzLLGU+0bjPO0LkuOLi4/5GtJWs/s=
 golang.org/x/oauth2 v0.0.0-20180821212333-d2e6202438be/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/oauth2 v0.0.0-20181106182150-f42d05182288/go.mod h1:N/0e6XlmueqKjAGxoOufVs8QHGRruUQn6yWY3a++T0U=
 golang.org/x/oauth2 v0.0.0-20190226205417-e64efc72b421/go.mod h1:gOpvHmFTYa4IltrdGE7lF6nIHvwfUNPOp7c8zoXwtLw=

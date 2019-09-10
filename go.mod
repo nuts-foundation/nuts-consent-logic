@@ -9,9 +9,10 @@ require (
 	github.com/labstack/echo/v4 v4.1.10
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190830112201-98ee205e7ba6
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20190910100600-89e3bfac479c
-	github.com/nuts-foundation/nuts-crypto v0.0.0-20190716073802-a38bca119a4e
+	github.com/nuts-foundation/nuts-crypto v0.0.0-20190910114200-6a76ac13c9db
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20190910111347-d827f8e7a542
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20190604130811-15db96a162bd
+	github.com/nuts-foundation/nuts-go v0.0.0-20190709092058-e3d5a9e754b6 // indirect
 	github.com/nuts-foundation/nuts-go-core v0.0.0-20190910094535-86aabc399861
 	github.com/nuts-foundation/nuts-registry v0.0.0-20190910105159-c1dad9284c15
 	github.com/satori/go.uuid v1.2.0
