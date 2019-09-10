@@ -35,7 +35,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/nuts-foundation/nuts-go/mock"
+	"github.com/nuts-foundation/nuts-go-core/mock"
 )
 
 type EventPublisherMock struct{}

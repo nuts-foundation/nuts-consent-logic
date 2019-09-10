@@ -27,7 +27,7 @@ import (
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	engine3 "github.com/nuts-foundation/nuts-consent-store/engine"
 	engine4 "github.com/nuts-foundation/nuts-event-octopus/engine"
-	nutsgo "github.com/nuts-foundation/nuts-go/pkg"
+	nutsgo "github.com/nuts-foundation/nuts-go-core"
 	engine2 "github.com/nuts-foundation/nuts-registry/engine"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
