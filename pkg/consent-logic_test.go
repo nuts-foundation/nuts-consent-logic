@@ -67,13 +67,36 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 	t.Run("it finalizes when all attachments are signed and initiatorLegalEntity is set", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
+		registryMock := mock3.NewMockRegistryClient(ctrl)
+		cryptoMock := mock2.NewMockClient(ctrl)
+		publicKey := "publicKeyFor00000002"
+		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey}, nil)
+		cryptoMock.EXPECT().VerifyWith(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
+
+		cypherText := "foo"
+		attachmentHash := "123hash"
+		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
+		consentRequestState.ConsentRecords = []api.ConsentRecord{
+			{
+				AttachmentHash: &attachmentHash,
+				CipherText:     &cypherText,
+				Signatures: []api.PartyAttachmentSignature{
+					{
+						Attachment: "123",
+						LegalEntity: "urn:agb:00000002",
+						Signature: api.SignatureWithKey{"signature", "publicKeyFor00000002"},
+					},
+				},
+			},
+		}
+		encodedState, _ = json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
 		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 		defer ctrl.Finish()
 
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 
-		cl := ConsentLogic{EventPublisher: publisherMock}
+		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry:registryMock, NutsCrypto:cryptoMock}
 		cl.HandleIncomingCordaEvent(event)
 	})
 
@@ -102,7 +125,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
-				CipherText:     &foo,
+				CipherText: &foo,
 			},
 		}
 		encodedState, _ := json.Marshal(consentRequestState)
@@ -125,7 +148,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		defer ctrl.Finish()
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
-		{
+			{
 				CipherText: &foo,
 				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
 			},
@@ -224,12 +247,14 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
 	performer := IdentifierURI(performerID)
 	ccr := &CreateConsentRequest{
-		Actors:       []IdentifierURI{IdentifierURI(party1ID)},
-		ConsentProof: nil,
-		Custodian:    IdentifierURI(custodianID),
-		Performer:    &performer,
-		Period:       &Period{Start: time.Now()},
-		Subject:      IdentifierURI(subjectID),
+		Actor:     IdentifierURI(party1ID),
+		Custodian: IdentifierURI(custodianID),
+		Performer: &performer,
+		Records: []Record{{
+			Period:       &Period{Start: time.Now()},
+			ConsentProof: nil,
+		}},
+		Subject: IdentifierURI(subjectID),
 	}
 	event, err := cl.createNewConsentRequestEvent(ccr)
 	if err != nil {
@@ -333,7 +358,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	// prepare method parameter
 	event := pkg.Event{}
 	fcrs := api.FullConsentRequestState{
-		LegalEntities:    []api.Identifier{api.Identifier(legalEntity)},
+		LegalEntities: []api.Identifier{api.Identifier(legalEntity)},
 		ConsentRecords: []api.ConsentRecord{
 			{
 				AttachmentHash: &consentRecordHash,
@@ -388,34 +413,20 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	cl := ConsentLogic{}
 	consentRules := cl.ConsentRulesFromFHIRRecord(string(validConsent))
 
-	if len(consentRules) != 2 {
+	if len(consentRules) != 1 {
 		t.Errorf("Expected 2 rules, got %d instead", len(consentRules))
 	}
 
 	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
-	firstActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
-	secondActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"
+	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
 	subject := "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
 
 	rule := consentRules[0]
 	if rule.Custodian != expectedCustodian {
 		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
 	}
-	if rule.Actor != firstActor {
-		t.Errorf("expected actor with id: %s, got %s instead", firstActor, rule.Actor)
-	}
-	if rule.Subject != subject {
-		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
-
-	}
-
-	// check the second rule
-	rule = consentRules[1]
-	if rule.Custodian != expectedCustodian {
-		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
-	}
-	if rule.Actor != secondActor {
-		t.Errorf("expected actor with id: %s, got %s instead", secondActor, rule.Actor)
+	if rule.Actor != actor {
+		t.Errorf("expected actor with id: %s, got %s instead", actor, rule.Actor)
 	}
 	if rule.Subject != subject {
 		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
