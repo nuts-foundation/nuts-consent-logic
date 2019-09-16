@@ -15,8 +15,6 @@ info:
     Also when a new consent event is received by the component from the consent bridge, it needs to decrypt it and check its validity.
 
     If valid it has to be send to vendor space to check if the subject is really a patient for that care organization.
-security:
-  - bearerAuth: []
 paths:
   '/api/consent':
     post:
@@ -32,7 +30,7 @@ paths:
         * For each actor: get the public key from registry
         * For each actor: encrypt the shared key with actors public key
         * Create request to consent bridge
-      operationId: nuts-consent-logic-create-consent
+      operationId: createConsent
       requestBody:
         required: true
         content:
@@ -50,6 +48,7 @@ paths:
                 $ref: '#/components/schemas/JobCreatedResponse'
   '/api/consent/validation':
     post:
+      operationId: validateConsent
       summary: Create the validity of a consent-request job
       description: |
         The following steps are performed:
@@ -62,7 +61,6 @@ paths:
           * Validate FHRI consent resource
           * Check if the patient is known
           * Sign the FHIR consent record with private key vendor
-      operationId: nuts-consent-logic-validate-consent
       requestBody:
         required: true
         content:
@@ -98,40 +96,26 @@ components:
       required:
         - subject
         - custodian
-        - actors
+        - actor
+        - records
       properties:
         subject:
           $ref: "#/components/schemas/SubjectURI"
         custodian:
           $ref: "#/components/schemas/CustodianURI"
-        actors:
-          description: >
-            A list of organizationIds which may access the patients
-            data. These organizations will take part in the consent
-            synchronization transactions.
-          type: array
-          items:
-            $ref: "#/components/schemas/ActorURI"
-          example:
-            - "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
-            - "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"
-
+        actor:
+          $ref: "#/components/schemas/ActorURI"
         performer:
           description: >
-            A cryptographic identiy of the performer, the
+            A cryptographic identity of the performer, the
             person who administers the consent. This field
             is optional. If no performer can be identified
             the consentProof field is mandatory.
           $ref: "#/components/schemas/IdentifierURI"
-        consentProof:
-          description: The proof of the consent. E.g. a scan of a signed document, signed pdf or irma proof.
-          example:
-            contentType: 'application/pdf'
-            data: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
-          allOf:
-            - $ref: "#/components/schemas/EmbeddedData"
-        period:
-          $ref: "#/components/schemas/Period"
+        records:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConsentRecord"
     Period:
       type: object
       required:
@@ -174,3 +158,39 @@ components:
       type: string
       description: "URI defining the data subject, usually the patient"
       example: "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
+    DataIdentifier:
+      type: object
+      required:
+        - endpointType
+        - dataIdentifier
+      properties:
+        endpointType:
+          type: string
+          description: |
+            EndpointType as used by the registry to find the correct endpoint.
+            This value should be used to retrieve the actual endpoint(s) from the registry.
+        dataIdentifier:
+          type: string
+          description: |
+            Unique identifier to retreive the data controlled by this consent in context of the endpointType.
+            For example, if the enpoint type is a http endpoint, this can be the relative path.
+      example:
+        endpointIdentifier: "urn:nuts:endpoint:fhir"
+        dataIdentifier: "/Observation/123"
+    ConsentRecord:
+      type: object
+      required:
+        - consentProof
+        - period
+      properties:
+        consentProof:
+          description: The proof of the consent. E.g. a scan of a signed document, digital signed PDF or irma contract.
+          example:
+            contentType: 'application/pdf'
+            data: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
+          allOf:
+            - $ref: "#/components/schemas/EmbeddedData"
+        period:
+          $ref: "#/components/schemas/Period"
+        dataRef:
+          $ref: "#/components/schemas/DataIdentifier"
