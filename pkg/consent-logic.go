@@ -246,6 +246,14 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
 					}
+					// Check if the signature is actual signed with this specific public key
+					if res, err := cl.NutsCrypto.VerifyWith([]byte(signature.Attachment), []byte(signature.Signature.PublicKey), signature.Signature.Data); !res || err != nil {
+						errorMsg := fmt.Sprintf("could not verify signature")
+						logger().Debug(errorMsg)
+						event.Error = &errorMsg
+						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						return
+					}
 				}
 			}
 
