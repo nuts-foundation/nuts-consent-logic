@@ -23,12 +23,16 @@ import (
 )
 
 type CreateConsentRequest struct {
-	Actors       []IdentifierURI
+	Actor     IdentifierURI
+	Custodian IdentifierURI
+	Subject   IdentifierURI
+	Performer *IdentifierURI
+	Records   []Record
+}
+
+type Record struct {
 	ConsentProof *EmbeddedData
-	Custodian    IdentifierURI
-	Performer    *IdentifierURI
 	Period       *Period
-	Subject      IdentifierURI
 }
 
 // EmbeddedData defines component schema for EmbeddedData.

@@ -52,18 +52,20 @@ func TestCreateFhirConsentResource(t *testing.T) {
 				CreateConsentRequest{
 					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-					Actors: []IdentifierURI{
+					Actor: IdentifierURI(
 						"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
-						"urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
-					},
-					Period: &Period{
-						Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
-						End:   &endDate,
-					},
-					ConsentProof: &EmbeddedData{
-						Data:        "dhklauHAELrlg78OLg==",
-						ContentType: "application/pdf",
-					},
+					),
+					Records: []Record {{
+						Period: &Period{
+							Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
+							End:   &endDate,
+						},
+						ConsentProof: &EmbeddedData{
+							Data:        "dhklauHAELrlg78OLg==",
+							ContentType: "application/pdf",
+						},
+
+					}},
 					Performer: &performerId,
 				},
 			},
@@ -77,7 +79,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			var o2 interface{}
 
 			_ = json.Unmarshal(validConsent, &o1)
-			got, err := CreateFhirConsentResource(tt.args.request)
+			got, err := CreateFhirConsentResource(tt.args.request.Custodian, tt.args.request.Actor, tt.args.request.Subject, *tt.args.request.Performer, tt.args.request.Records[0])
 
 			err = json.Unmarshal([]byte(got), &o2)
 			if err != nil {

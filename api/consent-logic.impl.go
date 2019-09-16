@@ -32,19 +32,36 @@ type Wrapper struct {
 }
 
 // NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
-func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
+func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
 	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshal json body:", err)
 		return err
 	}
 
-	nullTime := time.Time{}
-
-	if createConsentApiRequest.Period.Start == nullTime {
-		err := errors.New("period.start time is required")
+	// Validate if the request has at least one record
+	if len(createConsentApiRequest.Records) < 1 {
+		err := errors.New("the consent requires at least one record")
 		ctx.Logger().Error(err)
 		return err
+	}
+
+	nullTime := time.Time{}
+	for _, record := range createConsentApiRequest.Records {
+		// Validate if each record has a valid period Start:
+
+		if record.Period.Start == nullTime {
+			err := errors.New("period.start time is required")
+			ctx.Logger().Error(err)
+			return err
+		}
+
+		// Validate if each record has a valid proof
+		if record.ConsentProof.Data == "" || record.ConsentProof.ContentType == "" {
+			err := errors.New("each consent record needs a valid proof")
+			ctx.Logger().Error(err)
+			return err
+		}
 	}
 
 	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
@@ -59,7 +76,7 @@ func (wrapper Wrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
 // NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the
 // consent-request with several rules. If valid it signs the fhir-consent-resource for each vendor with its private key
 // and responds with the signatures to the consent-bridge
-func (Wrapper) NutsConsentLogicValidateConsent(ctx echo.Context) error {
+func (Wrapper) ValidateConsent(ctx echo.Context) error {
 	panic("implement me")
 }
 
@@ -77,21 +94,20 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 		createConsentRequest.Performer = &performer
 	}
 
-	for _, actor := range apiRequest.Actors {
-		createConsentRequest.Actors = append(createConsentRequest.Actors, pkg.IdentifierURI(actor))
-	}
+	for _, record := range apiRequest.Records {
+		newRecord := pkg.Record{}
 
-	if len(apiRequest.ConsentProof.Data) > 0 {
+		period := pkg.Period{Start: record.Period.Start, End: record.Period.End}
+		newRecord.Period = &period
+
 		consentProof := &pkg.EmbeddedData{
-			ContentType: apiRequest.ConsentProof.ContentType,
-			Data:        apiRequest.ConsentProof.ContentType,
+			ContentType: record.ConsentProof.ContentType,
+			Data:        record.ConsentProof.ContentType,
 		}
-		createConsentRequest.ConsentProof = consentProof
+		newRecord.ConsentProof = consentProof
+		createConsentRequest.Records = append(createConsentRequest.Records, newRecord)
 	}
+	createConsentRequest.Actor = pkg.IdentifierURI(apiRequest.Actor)
 
-	if apiRequest.Period != nil {
-		period := pkg.Period{Start: apiRequest.Period.Start, End: apiRequest.Period.End}
-		createConsentRequest.Period = &period
-	}
 	return createConsentRequest
 }

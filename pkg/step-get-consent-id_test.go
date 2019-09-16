@@ -36,7 +36,7 @@ func TestGetConsentId(t *testing.T) {
 		{
 			"it generates a externalId",
 			args{
-				request: CreateConsentRequest{Custodian: "agb#00000012", Actors: []IdentifierURI{"actor"}, Subject:IdentifierURI("subject")},
+				request: CreateConsentRequest{Custodian: "agb#00000012", Actor: IdentifierURI("actor"), Subject:IdentifierURI("subject")},
 			},
 			false,
 		},

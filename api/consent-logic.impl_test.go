@@ -55,11 +55,10 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		publicKey := "123"
 		endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
-		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
-		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
 		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
-		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
 
 		apiWrapper := wrapper(registryMock, cryptoMock, octoMock)
@@ -70,10 +69,19 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 		// provide the request
 		jsonRequest := &CreateConsentRequest{
-			Actors:    []ActorURI{"agb:00000001", "agb:00000002"},
+			Records: []ConsentRecord{
+				{
+					Period: Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType:"text/plain"} },
+				},
+				{
+					Period: Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType:"text/plain"} },
+				},
+			},
+			Actor:     ActorURI("agb:00000001"),
 			Custodian: CustodianURI("agb:00000007"),
 			Subject:   SubjectURI("bsn:99999990"),
-			Period:    &Period{Start: time.Now(), End: &endDate},
 			Performer: &performer,
 		}
 
@@ -86,7 +94,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 		echoServer.EXPECT().JSON(http.StatusAccepted, gomock.Any())
 
-		err := apiWrapper.NutsConsentLogicCreateConsent(echoServer)
+		err := apiWrapper.CreateConsent(echoServer)
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)

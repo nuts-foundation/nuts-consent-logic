@@ -30,7 +30,7 @@ func GetConsentId(cClient crypto.Client, request CreateConsentRequest) (string, 
 	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
 
 	// todo refactor
-	id, err := cClient.ExternalIdFor(string(subject), string(request.Actors[0]), legalEntity)
+	id, err := cClient.ExternalIdFor(string(subject), string(request.Actor), legalEntity)
 	if err != nil {
 		return "", err
 	}
