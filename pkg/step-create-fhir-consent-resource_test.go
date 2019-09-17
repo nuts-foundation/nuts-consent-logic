@@ -80,6 +80,9 @@ func TestCreateFhirConsentResource(t *testing.T) {
 
 			_ = json.Unmarshal(validConsent, &o1)
 			got, err := CreateFhirConsentResource(tt.args.request.Custodian, tt.args.request.Actor, tt.args.request.Subject, *tt.args.request.Performer, tt.args.request.Records[0])
+			if err != nil {
+				t.Error(err)
+			}
 
 			err = json.Unmarshal([]byte(got), &o2)
 			if err != nil {

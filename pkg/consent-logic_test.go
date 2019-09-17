@@ -83,9 +83,9 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 				CipherText:     &cypherText,
 				Signatures: []api.PartyAttachmentSignature{
 					{
-						Attachment: "123",
+						Attachment:  "123",
 						LegalEntity: "urn:agb:00000002",
-						Signature: api.SignatureWithKey{"signature", "publicKeyFor00000002"},
+						Signature:   api.SignatureWithKey{Data: "signature", PublicKey: "publicKeyFor00000002"},
 					},
 				},
 			},
@@ -97,7 +97,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 
-		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry:registryMock, NutsCrypto:cryptoMock}
+		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock, NutsCrypto: cryptoMock}
 		cl.HandleIncomingCordaEvent(event)
 	})
 
@@ -277,7 +277,6 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	if err != nil {
 		t.Error("event does not contain a valid UUID", err)
 	}
-
 
 }
 
