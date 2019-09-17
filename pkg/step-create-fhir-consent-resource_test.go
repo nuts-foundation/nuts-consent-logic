@@ -55,7 +55,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 					Actor: IdentifierURI(
 						"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 					),
-					Records: []Record {{
+					Records: []Record{{
 						Period: &Period{
 							Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
 							End:   &endDate,
@@ -64,7 +64,6 @@ func TestCreateFhirConsentResource(t *testing.T) {
 							Data:        "dhklauHAELrlg78OLg==",
 							ContentType: "application/pdf",
 						},
-
 					}},
 					Performer: &performerId,
 				},

@@ -123,4 +123,3 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 	router.POST("/api/consent/validation", wrapper.ValidateConsent)
 
 }
-

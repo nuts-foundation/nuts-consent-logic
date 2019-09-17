@@ -105,6 +105,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 // A matcher to check for successful jobCreateResponse
 type JobCreatedResponseMatcher struct{}
+
 // Matches a valid UUID and
 func (JobCreatedResponseMatcher) Matches(x interface{}) bool {
 	jobId := x.(JobCreatedResponse).JobId

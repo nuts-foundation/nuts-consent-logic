@@ -81,7 +81,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 
 	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	if err != nil {
-		return  nil, err
+		return nil, err
 	}
 	eventUUID, err := uuid.FromString(event.Uuid)
 	if err != nil {
@@ -112,7 +112,6 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		}
 		logger().Debug("ConsentId generated")
 	}
-
 
 	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Actor))
 	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))

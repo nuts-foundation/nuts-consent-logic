@@ -48,7 +48,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 		registryClient.EXPECT().OrganizationById(gomock.Eq(partyID)).Return(&db.Organization{PublicKey: &publicKey}, nil)
 
 		request := CreateConsentRequest{
-			Actor: IdentifierURI(partyID),
+			Actor:     IdentifierURI(partyID),
 			Custodian: IdentifierURI(custodianID),
 		}
 
@@ -63,7 +63,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, types2.LegalEntity{URI: custodianID}, )
+		}, types2.LegalEntity{URI: custodianID})
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}
