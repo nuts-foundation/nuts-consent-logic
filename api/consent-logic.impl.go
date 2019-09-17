@@ -66,11 +66,14 @@ func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
 
 	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
 
-	if err := wrapper.Cl.StartConsentFlow(createConsentRequest); err != nil {
+	eventUUID, err := wrapper.Cl.StartConsentFlow(createConsentRequest)
+	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
+	uuid := eventUUID.String()
+	response := JobCreatedResponse{ResultCode: "OK", JobId: &uuid}
 
-	return ctx.JSON(http.StatusAccepted, createConsentRequest)
+	return ctx.JSON(http.StatusAccepted, response)
 }
 
 // NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the

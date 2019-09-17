@@ -45,7 +45,7 @@ type ConsentLogicConfig struct {
 }
 
 type ConsentLogicClient interface {
-	StartConsentFlow(*CreateConsentRequest) error
+	StartConsentFlow(*CreateConsentRequest) (*uuid.UUID, error)
 	HandleIncomingCordaEvent(*events.Event)
 }
 
@@ -73,25 +73,27 @@ func ConsentLogicInstance() *ConsentLogic {
 }
 
 // StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
-func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
+func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) (*uuid.UUID, error) {
 	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	if err != nil {
-		return fmt.Errorf("error during publishing of event: %v", err)
+		return  nil, err
 	}
+	eventUUID, err := uuid.FromString(event.Uuid)
 
 	logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
-	return nil
+	return &eventUUID, nil
 }
 
 func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var consentID string
 	records := []bridgeClient.ConsentRecord{}
+	var legalEntities []bridgeClient.Identifier
 
 	{
 		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
@@ -108,7 +110,6 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		logger().Debug("ConsentId generated")
 	}
 
-	var legalEntities []bridgeClient.Identifier
 
 	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Actor))
 	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))

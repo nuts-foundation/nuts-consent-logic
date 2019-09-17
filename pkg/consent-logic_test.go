@@ -39,6 +39,7 @@ import (
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	uuid "github.com/satori/go.uuid"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -217,7 +218,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 }
 
-func TestConsentLogic_StartConsentFlow(t *testing.T) {
+func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	publisherMock := mock.NewMockIEventPublisher(ctrl)
@@ -267,10 +268,16 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.ConsentRecords[0].Signatures, crs.LegalEntities)
 	_, err = cl.decryptConsentRecord(crs.ConsentRecords[0], legalEntityToSignFor)
-
 	if err != nil {
 		t.Error("Could not decrypt consent", err)
 	}
+
+	// the event contains a valid UUID
+	_, err = uuid.FromString(event.Uuid)
+	if err != nil {
+		t.Error("event does not contain a valid UUID", err)
+	}
+
 
 }
 

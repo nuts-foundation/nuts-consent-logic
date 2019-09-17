@@ -30,6 +30,7 @@ import (
 	registrymock "github.com/nuts-foundation/nuts-registry/mock"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"testing"
@@ -71,12 +72,12 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		jsonRequest := &CreateConsentRequest{
 			Records: []ConsentRecord{
 				{
-					Period: Period{Start: time.Now(), End: &endDate},
-					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType:"text/plain"} },
+					Period:       Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType: "text/plain"}},
 				},
 				{
-					Period: Period{Start: time.Now(), End: &endDate},
-					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType:"text/plain"} },
+					Period:       Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType: "text/plain"}},
 				},
 			},
 			Actor:     ActorURI("agb:00000001"),
@@ -92,14 +93,30 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		})
 
 		// setup response expectation
-		echoServer.EXPECT().JSON(http.StatusAccepted, gomock.Any())
 
+		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
 		err := apiWrapper.CreateConsent(echoServer)
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
 	})
+}
+
+// A matcher to check for successful jobCreateResponse
+type JobCreatedResponseMatcher struct{}
+// Matches a valid UUID and
+func (JobCreatedResponseMatcher) Matches(x interface{}) bool {
+	jobId := x.(JobCreatedResponse).JobId
+	if jobId == nil {
+		return false
+	}
+	uuid, err := uuid.FromString(*jobId)
+	correctVersion := uuid.Version() == 4
+	return err == nil && correctVersion && x.(JobCreatedResponse).ResultCode == "OK"
+}
+func (JobCreatedResponseMatcher) String() string {
+	return "a successful created job"
 }
 
 func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client, octopusClient pkg2.EventOctopusClient) *Wrapper {

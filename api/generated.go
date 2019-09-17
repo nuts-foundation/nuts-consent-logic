@@ -57,7 +57,7 @@ type IdentifierURI string
 // JobCreatedResponse defines model for JobCreatedResponse.
 type JobCreatedResponse struct {
 	JobId      *string `json:"jobId,omitempty"`
-	ResultCode *string `json:"resultCode,omitempty"`
+	ResultCode string  `json:"resultCode"`
 }
 
 // Period defines model for Period.
