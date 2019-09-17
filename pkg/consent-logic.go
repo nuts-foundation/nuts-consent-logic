@@ -84,6 +84,9 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		return  nil, err
 	}
 	eventUUID, err := uuid.FromString(event.Uuid)
+	if err != nil {
+		return nil, err
+	}
 
 	logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
 	return &eventUUID, nil
