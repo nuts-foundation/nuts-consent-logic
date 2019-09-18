@@ -249,7 +249,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
 					}
-					
+
 					// checking the actual signature here is not required since it's already checked by the CordApp.
 				}
 			}

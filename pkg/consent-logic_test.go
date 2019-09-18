@@ -69,10 +69,8 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		registryMock := mock3.NewMockRegistryClient(ctrl)
-		cryptoMock := mock2.NewMockClient(ctrl)
 		publicKey := "publicKeyFor00000002"
 		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey}, nil)
-		cryptoMock.EXPECT().VerifyWith(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
@@ -97,7 +95,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 
-		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock, NutsCrypto: cryptoMock}
+		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 		cl.HandleIncomingCordaEvent(event)
 	})
 
@@ -121,7 +119,6 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000001"})
-		//consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
