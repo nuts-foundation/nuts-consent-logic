@@ -492,7 +492,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 		return
 	}
 
-	var consentRules []cStore.ConsentRule
+	var patientConsents []cStore.PatientConsent
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
@@ -508,19 +508,23 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 				return
 			}
 
-			// todo: check everything for validity again
-			consentRules = append(consentRules, cl.ConsentRulesFromFHIRRecord(fhirConsentString)...)
+			patientConsent := cl.PatientConsentFromFHIRRecord(fhirConsentString)
+			patientConsent.ID = *crs.ConsentId.ExternalId
+			patientConsent.Records[0].Hash = *cr.AttachmentHash
+			patientConsents = append(patientConsents, patientConsent)
+
+			// todo: check the contents of the patientConsent for validity since the other side might have changed it
 
 			// consentrules gathered, continue with the flow
 			break
 		}
 	}
 
-	consentRules = cl.filterConsentRules(consentRules)
-	logger().Debugf("found %d consent rules", len(consentRules))
+	patientConsents = cl.filterConsentRules(patientConsents)
+	logger().Debugf("found %d consent rules", len(patientConsents))
 
-	logger().Debugf("Storing consent: %+v", consentRules)
-	err = cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
+	logger().Debugf("Storing consent: %+v", patientConsents)
+	err = cl.NutsConsentStore.RecordConsent(context.Background(), patientConsents)
 	if err != nil {
 		logger().WithError(err).Error("unable to record the consents")
 		return
@@ -535,8 +539,8 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 }
 
 // only consent records of which or the custodian or the actor is managed by this node should be stored
-func (cl ConsentLogic) filterConsentRules(allRules []cStore.ConsentRule) []cStore.ConsentRule {
-	var validRules []cStore.ConsentRule
+func (cl ConsentLogic) filterConsentRules(allRules []cStore.PatientConsent) []cStore.PatientConsent {
+	var validRules []cStore.PatientConsent
 	for _, rule := range allRules {
 		// add if custodian is managed by this node
 		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: rule.Custodian}); key != "" {
@@ -553,27 +557,22 @@ func (cl ConsentLogic) filterConsentRules(allRules []cStore.ConsentRule) []cStor
 	return validRules
 }
 
-// ConsentRulesFromFHIRRecord extracts a list of consent rules from a FHIR consent record encoded as json string.
-func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) []cStore.ConsentRule {
-	var consentRules []cStore.ConsentRule
-
+// PatientConsentFromFHIRRecord extracts the PatientConsent from a FHIR consent record encoded as json string.
+func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsentString string) cStore.PatientConsent {
 	fhirConsent := gojsonq.New().JSONString(fhirConsentString)
 
-	actors := pkg2.ActorsFrom(fhirConsent)
+	actor := pkg2.ActorsFrom(fhirConsent)[0]
 	custodian := pkg2.CustodianFrom(fhirConsent)
 	subject := pkg2.SubjectFrom(fhirConsent)
 	resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
+	record := []cStore.ConsentRecord{{Resources: resources}}
 
-	for _, actor := range actors {
-		consentRules = append(consentRules, cStore.ConsentRule{
-			Actor:     string(actor),
-			Custodian: custodian,
-			Resources: resources,
-			Subject:   subject,
-		})
+	return cStore.PatientConsent{
+		Actor:     string(actor),
+		Custodian: custodian,
+		Subject:   subject,
+		Records:   record,
 	}
-
-	return consentRules
 }
 
 func (ConsentLogic) Configure() error {
