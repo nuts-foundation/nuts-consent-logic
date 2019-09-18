@@ -417,26 +417,35 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	}
 
 	cl := ConsentLogic{}
-	rule := cl.PatientConsentFromFHIRRecord(string(validConsent))
+	patientConsent := cl.PatientConsentFromFHIRRecord(string(validConsent))
 
 	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
 	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
 	subject := "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
 
-	if rule.Custodian != expectedCustodian {
-		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
+	if patientConsent.Custodian != expectedCustodian {
+		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, patientConsent.Custodian)
 	}
-	if rule.Actor != actor {
-		t.Errorf("expected actor with id: %s, got %s instead", actor, rule.Actor)
+	if patientConsent.Actor != actor {
+		t.Errorf("expected actor with id: %s, got %s instead", actor, patientConsent.Actor)
 	}
-	if rule.Subject != subject {
-		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
+	if patientConsent.Subject != subject {
+		t.Errorf("expected subject with bsn: %s, got %s instead", subject, patientConsent.Subject)
+	}
+	if len(patientConsent.Records) != 1 {
+		t.Errorf("expected 1 record, got %d instedad", len(patientConsent.Records))
+	}
+	record := patientConsent.Records[0]
+	// "start": "2019-01-01T11:00:00Z",
+	// "end": "2019-07-01T11:00:00Z"
+	if record.ValidFrom.Month() != 1 || record.ValidTo.Month() != 7 {
+		t.Errorf("expected validFrom and validTo to have correct values got %v, %v", record.ValidFrom.Month(), record.ValidTo.Month())
+	}
 
-	}
 }
 
 func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
-	t.Skip("the distributed_event is out of date. Collect a new one.")
+	//t.Skip("the distributed_event is out of date. Collect a new one.")
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
@@ -448,13 +457,15 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		t.Error(err)
 	}
 	cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).Return(validConsent, nil)
+	start, _ := time.Parse(time.RFC3339, "2019-07-01T12:00:00+02:00")
+	end, _ := time.Parse(time.RFC3339, "2020-07-01T12:00:00+02:00")
 
 	consentStoreMock := mock4.NewMockConsentStoreClient(ctrl)
 	patientConsents := []pkg3.PatientConsent{{
-		ID:        "13bf4c28d334d712c7297613cffc97d935c9972897d6fe678fc9f3ad8e354ada",
+		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation"}}, Hash: "hash123"}},
+		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation", }}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
 	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)

@@ -108,7 +108,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		if consentID, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
 			fmt.Println(err)
 			// todo: report back the reason why the consentID could not be generated. Probably because the custodian is not managed by this node?
-			return nil, errors.New("could not create the consentID for this combination of subject and custodian")
+			return nil, errors.New("could not create the consentID for this combination of subject, actor and custodian")
 		}
 		logger().Debug("ConsentId generated")
 	}
@@ -565,7 +565,8 @@ func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsentString string) cStor
 	custodian := pkg2.CustodianFrom(fhirConsent)
 	subject := pkg2.SubjectFrom(fhirConsent)
 	resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
-	record := []cStore.ConsentRecord{{Resources: resources}}
+	period := pkg2.PeriodFrom(fhirConsent)
+	record := []cStore.ConsentRecord{{Resources: resources, ValidFrom: period[0], ValidTo: period[1]}}
 
 	return cStore.PatientConsent{
 		Actor:     string(actor),
