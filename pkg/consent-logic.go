@@ -224,7 +224,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		// Is this node the initiator? InitiatorLegalEntity is only set at the initiating node.
 		if event.InitiatorLegalEntity != "" {
 
-			// Now check the signatures
+			// Now check the public keys used by the signatures
 			for _, cr := range crs.ConsentRecords {
 				for _, signature := range cr.Signatures {
 					// Get the published public key from register
@@ -249,14 +249,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
 					}
-					// Check if the signature is actual signed with this specific public key
-					if res, err := cl.NutsCrypto.VerifyWith([]byte(signature.Attachment), []byte(signature.Signature.PublicKey), signature.Signature.Data); !res || err != nil {
-						errorMsg := fmt.Sprintf("could not verify signature")
-						logger().Debug(errorMsg)
-						event.Error = &errorMsg
-						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
-						return
-					}
+					
+					// checking the actual signature here is not required since it's already checked by the CordApp.
 				}
 			}
 
