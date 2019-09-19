@@ -76,13 +76,6 @@ func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
 	return ctx.JSON(http.StatusAccepted, response)
 }
 
-// NutsConsentLogicValidateConsent gets called by the consent-bridge on a consent-request event. It validates the
-// consent-request with several rules. If valid it signs the fhir-consent-resource for each vendor with its private key
-// and responds with the signatures to the consent-bridge
-func (Wrapper) ValidateConsent(ctx echo.Context) error {
-	panic("implement me")
-}
-
 // Convert the public generated data type to the internal type.
 // This abstraction makes the app more robust to api changes.
 func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequest {

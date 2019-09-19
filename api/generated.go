@@ -22,11 +22,6 @@ type ConsentRecord struct {
 	Period  Period          `json:"period"`
 }
 
-// ConsentValidationRequest defines model for ConsentValidationRequest.
-type ConsentValidationRequest struct {
-	ConsentId *string `json:"consentId,omitempty"`
-}
-
 // CreateConsentRequest defines model for CreateConsentRequest.
 type CreateConsentRequest struct {
 	Actor     ActorURI        `json:"actor"`
@@ -72,21 +67,13 @@ type SubjectURI string
 // createConsentJSONBody defines parameters for CreateConsent.
 type createConsentJSONBody CreateConsentRequest
 
-// validateConsentJSONBody defines parameters for ValidateConsent.
-type validateConsentJSONBody ConsentValidationRequest
-
 // CreateConsentRequestBody defines body for CreateConsent for application/json ContentType.
 type CreateConsentJSONRequestBody createConsentJSONBody
-
-// ValidateConsentRequestBody defines body for ValidateConsent for application/json ContentType.
-type ValidateConsentJSONRequestBody validateConsentJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
 	// Create a new consent.// (POST /api/consent)
 	CreateConsent(ctx echo.Context) error
-	// Create the validity of a consent-request job// (POST /api/consent/validation)
-	ValidateConsent(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -103,15 +90,6 @@ func (w *ServerInterfaceWrapper) CreateConsent(ctx echo.Context) error {
 	return err
 }
 
-// ValidateConsent converts echo context to params.
-func (w *ServerInterfaceWrapper) ValidateConsent(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.ValidateConsent(ctx)
-	return err
-}
-
 // RegisterHandlers adds each server route to the EchoRouter.
 func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 
@@ -120,6 +98,6 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 	}
 
 	router.POST("/api/consent", wrapper.CreateConsent)
-	router.POST("/api/consent/validation", wrapper.ValidateConsent)
 
 }
+

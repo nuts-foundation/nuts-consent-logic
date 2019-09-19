@@ -46,34 +46,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JobCreatedResponse'
-  '/api/consent/validation':
-    post:
-      operationId: validateConsent
-      summary: Create the validity of a consent-request job
-      description: |
-        The following steps are performed:
-        * Fetch the meta data of the consent request from the consent bridge
-        * Check for known active vendors in the actor list
-        * Download attachments from consent bridge
-        * For each known vendor:
-          * decrypt the shared key
-          * decrypt the FHIR consent resource with shared key
-          * Validate FHRI consent resource
-          * Check if the patient is known
-          * Sign the FHIR consent record with private key vendor
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ConsentValidationRequest'
-      responses:
-        '200':
-          description: Validation job created.
-          content:
-            'application/json':
-              schema:
-                $ref: '#/components/schemas/JobCreatedResponse'
 components:
   schemas:
     JobCreatedResponse:
@@ -87,12 +59,6 @@ components:
         jobId:
           type: string
           example: '123'
-    ConsentValidationRequest:
-      type: object
-      properties:
-        consentId:
-          type: string
-          example: '87203b8f5b23f04c20b645b1121c6ed561b2d45c1d903083332b8b98ce0f7f10bc6bd7b2094bf8287a72246c3c1c318811e022b183eac9d1e1a4fcadeeb2c9e9'
     CreateConsentRequest:
       type: object
       required:
