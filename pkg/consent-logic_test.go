@@ -74,18 +74,19 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
+		signatures := []api.PartyAttachmentSignature{
+			{
+				Attachment:  "123",
+				LegalEntity: "urn:agb:00000002",
+				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: "publicKeyFor00000002"},
+			},
+		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				AttachmentHash: &attachmentHash,
 				CipherText:     &cypherText,
-				Signatures: []api.PartyAttachmentSignature{
-					{
-						Attachment:  "123",
-						LegalEntity: "urn:agb:00000002",
-						Signature:   api.SignatureWithKey{Data: "signature", PublicKey: "publicKeyFor00000002"},
-					},
-				},
+				Signatures:     &signatures,
 			},
 		}
 		encodedState, _ = json.Marshal(consentRequestState)
@@ -145,10 +146,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"})
 		defer ctrl.Finish()
 		foo := "foo"
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				CipherText: &foo,
-				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+				Signatures: &signatures,
 			},
 		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
@@ -174,14 +176,15 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 
 		cypherText2 := "cyphertext for 00000002"
+		// 00000001 already signed
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				CipherText: &fooEncoded,
 				Metadata: &api.Metadata{
 					OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
 				},
-				// 00000001 already signed
-				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+				Signatures: &signatures,
 			},
 		}
 		// two parties involved in this transaction
@@ -462,7 +465,7 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation", }}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
+		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation",}}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
 	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)

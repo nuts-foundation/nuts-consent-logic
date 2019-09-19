@@ -217,7 +217,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// check if all parties signed all attachments, than this request can be finalized by the initiator
 	allSigned := true
 	for _, cr := range crs.ConsentRecords {
-		if len(cr.Signatures) != len(crs.LegalEntities) {
+		if cr.Signatures == nil || len(*cr.Signatures) != len(crs.LegalEntities) {
 			allSigned = false
 		}
 	}
@@ -229,7 +229,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 			// Now check the public keys used by the signatures
 			for _, cr := range crs.ConsentRecords {
-				for _, signature := range cr.Signatures {
+				for _, signature := range *cr.Signatures {
 					// Get the published public key from register
 					legalEntityID := signature.LegalEntity
 					legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
@@ -437,11 +437,15 @@ func (cl ConsentLogic) decryptConsentRecord(cr bridgeClient.ConsentRecord, legal
 // The node can manage more than one legalEntity. This method provides a deterministic way of selecting the current
 // legalEntity to work with. It loops over all legalEntities, selects the ones that still needs to sign and selects
 // the first one which is managed by this node.
-func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
+func (cl ConsentLogic) findFirstEntityToSignFor(signatures *[]bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
 	// fill map with signatures legalEntity for easy lookup
 	attSignatures := make(map[string]bool)
-	for _, att := range signatures {
-		attSignatures[string(att.LegalEntity)] = true
+	// signatures can be nil if no signatures have been set yet
+	if signatures != nil {
+		for _, att := range *signatures {
+			attSignatures[string(att.LegalEntity)] = true
+		}
+
 	}
 
 	// Find all LegalEntities managed by this node which still need a signature
