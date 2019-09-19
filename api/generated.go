@@ -9,60 +9,71 @@ import (
 	"time"
 )
 
-// ActorURI defines component schema for ActorURI.
+// ActorURI defines model for ActorURI.
 type ActorURI string
 
-// ConsentValidationRequest defines component schema for ConsentValidationRequest.
-type ConsentValidationRequest struct {
-	ConsentId *string `json:"consentId,omitempty"`
-}
-
-// CreateConsentRequest defines component schema for CreateConsentRequest.
-type CreateConsentRequest struct {
-	Actors       []ActorURI `json:"actors"`
+// ConsentRecord defines model for ConsentRecord.
+type ConsentRecord struct {
 	ConsentProof struct {
 		// Embedded struct due to allOf(#/components/schemas/EmbeddedData)
 		EmbeddedData
-	} `json:"consentProof,omitempty"`
-	Custodian CustodianURI   `json:"custodian"`
-	Performer *IdentifierURI `json:"performer,omitempty"`
-	Period    *Period        `json:"period,omitempty"`
-	Subject   SubjectURI     `json:"subject"`
+	} `json:"consentProof"`
+	DataRef *DataIdentifier `json:"dataRef,omitempty"`
+	Period  Period          `json:"period"`
 }
 
-// CustodianURI defines component schema for CustodianURI.
+// CreateConsentRequest defines model for CreateConsentRequest.
+type CreateConsentRequest struct {
+	Actor     ActorURI        `json:"actor"`
+	Custodian CustodianURI    `json:"custodian"`
+	Performer *IdentifierURI  `json:"performer,omitempty"`
+	Records   []ConsentRecord `json:"records"`
+	Subject   SubjectURI      `json:"subject"`
+}
+
+// CustodianURI defines model for CustodianURI.
 type CustodianURI string
 
-// EmbeddedData defines component schema for EmbeddedData.
+// DataIdentifier defines model for DataIdentifier.
+type DataIdentifier struct {
+	DataIdentifier string `json:"dataIdentifier"`
+	EndpointType   string `json:"endpointType"`
+}
+
+// EmbeddedData defines model for EmbeddedData.
 type EmbeddedData struct {
 	ContentType string `json:"contentType"`
 	Data        string `json:"data"`
 }
 
-// IdentifierURI defines component schema for IdentifierURI.
+// IdentifierURI defines model for IdentifierURI.
 type IdentifierURI string
 
-// JobCreatedResponse defines component schema for JobCreatedResponse.
+// JobCreatedResponse defines model for JobCreatedResponse.
 type JobCreatedResponse struct {
 	JobId      *string `json:"jobId,omitempty"`
-	ResultCode *string `json:"resultCode,omitempty"`
+	ResultCode string  `json:"resultCode"`
 }
 
-// Period defines component schema for Period.
+// Period defines model for Period.
 type Period struct {
 	End   *time.Time `json:"end,omitempty"`
 	Start time.Time  `json:"start"`
 }
 
-// SubjectURI defines component schema for SubjectURI.
+// SubjectURI defines model for SubjectURI.
 type SubjectURI string
+
+// createConsentJSONBody defines parameters for CreateConsent.
+type createConsentJSONBody CreateConsentRequest
+
+// CreateConsentRequestBody defines body for CreateConsent for application/json ContentType.
+type CreateConsentJSONRequestBody createConsentJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Create a new consent. (POST /api/consent)
-	NutsConsentLogicCreateConsent(ctx echo.Context) error
-	// Create the validity of a consent-request job (POST /api/consent/validation)
-	NutsConsentLogicValidateConsent(ctx echo.Context) error
+	// Create a new consent.// (POST /api/consent)
+	CreateConsent(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -70,21 +81,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// NutsConsentLogicCreateConsent converts echo context to params.
-func (w *ServerInterfaceWrapper) NutsConsentLogicCreateConsent(ctx echo.Context) error {
+// CreateConsent converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateConsent(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.NutsConsentLogicCreateConsent(ctx)
-	return err
-}
-
-// NutsConsentLogicValidateConsent converts echo context to params.
-func (w *ServerInterfaceWrapper) NutsConsentLogicValidateConsent(ctx echo.Context) error {
-	var err error
-
-	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.NutsConsentLogicValidateConsent(ctx)
+	err = w.Handler.CreateConsent(ctx)
 	return err
 }
 
@@ -95,8 +97,7 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 		Handler: si,
 	}
 
-	router.POST("/api/consent", wrapper.NutsConsentLogicCreateConsent)
-	router.POST("/api/consent/validation", wrapper.NutsConsentLogicValidateConsent)
+	router.POST("/api/consent", wrapper.CreateConsent)
 
 }
 

@@ -30,6 +30,7 @@ import (
 	registrymock "github.com/nuts-foundation/nuts-registry/mock"
 	registry "github.com/nuts-foundation/nuts-registry/pkg"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"testing"
@@ -55,11 +56,10 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		publicKey := "123"
 		endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
-		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil)
-		registryMock.EXPECT().OrganizationById("agb:00000002").Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
 		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
-		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
 
 		apiWrapper := wrapper(registryMock, cryptoMock, octoMock)
@@ -70,10 +70,19 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 		// provide the request
 		jsonRequest := &CreateConsentRequest{
-			Actors:    []ActorURI{"agb:00000001", "agb:00000002"},
+			Records: []ConsentRecord{
+				{
+					Period:       Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType: "text/plain"}},
+				},
+				{
+					Period:       Period{Start: time.Now(), End: &endDate},
+					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType: "text/plain"}},
+				},
+			},
+			Actor:     ActorURI("agb:00000001"),
 			Custodian: CustodianURI("agb:00000007"),
 			Subject:   SubjectURI("bsn:99999990"),
-			Period:    &Period{Start: time.Now(), End: &endDate},
 			Performer: &performer,
 		}
 
@@ -84,14 +93,31 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		})
 
 		// setup response expectation
-		echoServer.EXPECT().JSON(http.StatusAccepted, gomock.Any())
 
-		err := apiWrapper.NutsConsentLogicCreateConsent(echoServer)
+		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
+		err := apiWrapper.CreateConsent(echoServer)
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
 	})
+}
+
+// A matcher to check for successful jobCreateResponse
+type JobCreatedResponseMatcher struct{}
+
+// Matches a valid UUID and
+func (JobCreatedResponseMatcher) Matches(x interface{}) bool {
+	jobID := x.(JobCreatedResponse).JobId
+	if jobID == nil {
+		return false
+	}
+	uuid, err := uuid.FromString(*jobID)
+	correctVersion := uuid.Version() == 4
+	return err == nil && correctVersion && x.(JobCreatedResponse).ResultCode == "OK"
+}
+func (JobCreatedResponseMatcher) String() string {
+	return "a successful created job"
 }
 
 func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client, octopusClient pkg2.EventOctopusClient) *Wrapper {

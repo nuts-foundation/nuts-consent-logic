@@ -39,6 +39,7 @@ import (
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
+	uuid "github.com/satori/go.uuid"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -67,13 +68,35 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 	t.Run("it finalizes when all attachments are signed and initiatorLegalEntity is set", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
+		registryMock := mock3.NewMockRegistryClient(ctrl)
+		publicKey := "publicKeyFor00000002"
+		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey}, nil)
+
+		cypherText := "foo"
+		attachmentHash := "123hash"
+		signatures := []api.PartyAttachmentSignature{
+			{
+				Attachment:  "123",
+				LegalEntity: "urn:agb:00000002",
+				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: "publicKeyFor00000002"},
+			},
+		}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
+		consentRequestState.ConsentRecords = []api.ConsentRecord{
+			{
+				AttachmentHash: &attachmentHash,
+				CipherText:     &cypherText,
+				Signatures:     &signatures,
+			},
+		}
+		encodedState, _ = json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
 		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 		defer ctrl.Finish()
 
 		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 
-		cl := ConsentLogic{EventPublisher: publisherMock}
+		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 		cl.HandleIncomingCordaEvent(event)
 	})
 
@@ -97,12 +120,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000001"})
-		//consentRequestState.Signatures = []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
-				CipherText:     &foo,
+				CipherText: &foo,
 			},
 		}
 		encodedState, _ := json.Marshal(consentRequestState)
@@ -124,10 +146,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"})
 		defer ctrl.Finish()
 		foo := "foo"
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
-		{
+			{
 				CipherText: &foo,
-				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+				Signatures: &signatures,
 			},
 		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
@@ -153,14 +176,15 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		cryptoMock := mock2.NewMockClient(ctrl)
 
 		cypherText2 := "cyphertext for 00000002"
+		// 00000001 already signed
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				CipherText: &fooEncoded,
 				Metadata: &api.Metadata{
 					OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
 				},
-				// 00000001 already signed
-				Signatures: []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}},
+				Signatures: &signatures,
 			},
 		}
 		// two parties involved in this transaction
@@ -194,7 +218,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 }
 
-func TestConsentLogic_StartConsentFlow(t *testing.T) {
+func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	publisherMock := mock.NewMockIEventPublisher(ctrl)
@@ -224,12 +248,14 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
 	performer := IdentifierURI(performerID)
 	ccr := &CreateConsentRequest{
-		Actors:       []IdentifierURI{IdentifierURI(party1ID)},
-		ConsentProof: nil,
-		Custodian:    IdentifierURI(custodianID),
-		Performer:    &performer,
-		Period:       &Period{Start: time.Now()},
-		Subject:      IdentifierURI(subjectID),
+		Actor:     IdentifierURI(party1ID),
+		Custodian: IdentifierURI(custodianID),
+		Performer: &performer,
+		Records: []Record{{
+			Period:       &Period{Start: time.Now()},
+			ConsentProof: nil,
+		}},
+		Subject: IdentifierURI(subjectID),
 	}
 	event, err := cl.createNewConsentRequestEvent(ccr)
 	if err != nil {
@@ -242,15 +268,20 @@ func TestConsentLogic_StartConsentFlow(t *testing.T) {
 
 	legalEntityToSignFor := cl.findFirstEntityToSignFor(crs.ConsentRecords[0].Signatures, crs.LegalEntities)
 	_, err = cl.decryptConsentRecord(crs.ConsentRecords[0], legalEntityToSignFor)
-
 	if err != nil {
 		t.Error("Could not decrypt consent", err)
+	}
+
+	// the event contains a valid UUID
+	_, err = uuid.FromString(event.Uuid)
+	if err != nil {
+		t.Error("event does not contain a valid UUID", err)
 	}
 
 }
 
 func TestConsentLogic_filterConssentRules(t *testing.T) {
-	allRules := []pkg3.ConsentRule{{
+	allRules := []pkg3.PatientConsent{{
 		Custodian: "00000001",
 		Actor:     "00000002",
 	}, {
@@ -333,7 +364,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	// prepare method parameter
 	event := pkg.Event{}
 	fcrs := api.FullConsentRequestState{
-		LegalEntities:    []api.Identifier{api.Identifier(legalEntity)},
+		LegalEntities: []api.Identifier{api.Identifier(legalEntity)},
 		ConsentRecords: []api.ConsentRecord{
 			{
 				AttachmentHash: &consentRecordHash,
@@ -386,44 +417,35 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	}
 
 	cl := ConsentLogic{}
-	consentRules := cl.ConsentRulesFromFHIRRecord(string(validConsent))
-
-	if len(consentRules) != 2 {
-		t.Errorf("Expected 2 rules, got %d instead", len(consentRules))
-	}
+	patientConsent := cl.PatientConsentFromFHIRRecord(string(validConsent))
 
 	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
-	firstActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
-	secondActor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"
+	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
 	subject := "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
 
-	rule := consentRules[0]
-	if rule.Custodian != expectedCustodian {
-		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
+	if patientConsent.Custodian != expectedCustodian {
+		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, patientConsent.Custodian)
 	}
-	if rule.Actor != firstActor {
-		t.Errorf("expected actor with id: %s, got %s instead", firstActor, rule.Actor)
+	if patientConsent.Actor != actor {
+		t.Errorf("expected actor with id: %s, got %s instead", actor, patientConsent.Actor)
 	}
-	if rule.Subject != subject {
-		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
+	if patientConsent.Subject != subject {
+		t.Errorf("expected subject with bsn: %s, got %s instead", subject, patientConsent.Subject)
+	}
+	if len(patientConsent.Records) != 1 {
+		t.Errorf("expected 1 record, got %d instedad", len(patientConsent.Records))
+	}
+	record := patientConsent.Records[0]
+	// "start": "2019-01-01T11:00:00Z",
+	// "end": "2019-07-01T11:00:00Z"
+	if record.ValidFrom.Month() != 1 || record.ValidTo.Month() != 7 {
+		t.Errorf("expected validFrom and validTo to have correct values got %v, %v", record.ValidFrom.Month(), record.ValidTo.Month())
+	}
 
-	}
-
-	// check the second rule
-	rule = consentRules[1]
-	if rule.Custodian != expectedCustodian {
-		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, rule.Custodian)
-	}
-	if rule.Actor != secondActor {
-		t.Errorf("expected actor with id: %s, got %s instead", secondActor, rule.Actor)
-	}
-	if rule.Subject != subject {
-		t.Errorf("expected subject with bsn: %s, got %s instead", subject, rule.Subject)
-
-	}
 }
 
 func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
+	//t.Skip("the distributed_event is out of date. Collect a new one.")
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
@@ -435,16 +457,18 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		t.Error(err)
 	}
 	cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).Return(validConsent, nil)
+	start, _ := time.Parse(time.RFC3339, "2019-07-01T12:00:00+02:00")
+	end, _ := time.Parse(time.RFC3339, "2020-07-01T12:00:00+02:00")
 
 	consentStoreMock := mock4.NewMockConsentStoreClient(ctrl)
-	consentRules := []pkg3.ConsentRule{{
-		ID:        0,
+	patientConsents := []pkg3.PatientConsent{{
+		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-		Resources: []pkg3.Resource{{ConsentRuleID: 0, ResourceType: "Observation"}},
+		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation",}}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
-	consentStoreMock.EXPECT().RecordConsent(context.Background(), consentRules).Return(nil)
+	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)
 
 	publisherMock := mock.NewMockIEventPublisher(ctrl)
 	publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())

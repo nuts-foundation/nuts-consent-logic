@@ -148,25 +148,23 @@ func valueFromUrn(urn string) string {
 	return segments[len(segments)-1]
 }
 
-func CreateFhirConsentResource(request CreateConsentRequest) (string, error) {
+func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierURI, record Record) (string, error) {
 
 	var actorAgbs []string
-	for _, actor := range request.Actors {
-		actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
-	}
+	actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
 
 	viewModel := map[string]interface{}{
-		"subjectBsn":   valueFromUrn(string(request.Subject)),
+		"subjectBsn":   valueFromUrn(string(subject)),
 		"actorAgbs":    actorAgbs,
-		"custodianAgb": valueFromUrn(string(request.Custodian)),
+		"custodianAgb": valueFromUrn(string(custodian)),
 		"period": map[string]string{
-			"Start": request.Period.Start.Format(time.RFC3339),
+			"Start": record.Period.Start.Format(time.RFC3339),
 		},
-		"consentProof": request.ConsentProof,
-		"performerId":  valueFromUrn(string(*request.Performer)),
+		"consentProof": record.ConsentProof,
+		"performerId":  valueFromUrn(string(performer)),
 	}
 
-	periodEnd := request.Period.End
+	periodEnd := record.Period.End
 	if periodEnd != nil {
 		(viewModel["period"].(map[string]string))["End"] = periodEnd.Format(time.RFC3339)
 	}

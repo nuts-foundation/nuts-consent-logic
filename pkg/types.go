@@ -23,12 +23,19 @@ import (
 )
 
 type CreateConsentRequest struct {
-	Actors       []IdentifierURI
+	Actor     IdentifierURI
+	Custodian IdentifierURI
+	Subject   IdentifierURI
+	Performer *IdentifierURI
+	Records   []Record
+}
+
+// Record contains derived values from a consent record for a custodian/subject/actor triple.
+// There can be multiple records per triple, each with their own proof and details.
+// More values can be added to this struct later.
+type Record struct {
 	ConsentProof *EmbeddedData
-	Custodian    IdentifierURI
-	Performer    *IdentifierURI
 	Period       *Period
-	Subject      IdentifierURI
 }
 
 // EmbeddedData defines component schema for EmbeddedData.

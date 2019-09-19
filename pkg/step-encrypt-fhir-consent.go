@@ -29,23 +29,20 @@ func EncryptFhirConsent(registryClient registry.RegistryClient, cryptoClient cry
 	// list of PEM encoded pubic keys to encrypt the record
 	var partyKeys []string
 
-
-	for _, actor := range request.Actors {
-		// get public key for actor
-		organization, err := registryClient.OrganizationById(string(actor))
-		if err != nil {
-			logger().Errorf("error while getting public key for actor: %v from registry: %v", actor, err)
-			return cryptoTypes.DoubleEncryptedCipherText{}, err
-		}
-		if organization.PublicKey == nil {
-			return cryptoTypes.DoubleEncryptedCipherText{}, fmt.Errorf("registry entry for organization %v does not contain a public key", actor)
-		}
-		pk := *organization.PublicKey
-		partyKeys = append(partyKeys, pk)
+	// get public key for actor
+	organization, err := registryClient.OrganizationById(string(request.Actor))
+	if err != nil {
+		logger().Errorf("error while getting public key for actor: %v from registry: %v", request.Actor, err)
+		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
+	if organization.PublicKey == nil {
+		return cryptoTypes.DoubleEncryptedCipherText{}, fmt.Errorf("registry entry for organization %v does not contain a public key", request.Actor)
+	}
+	pk := *organization.PublicKey
+	partyKeys = append(partyKeys, pk)
 
 	// and custodian
-	pk, err := cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
+	pk, err = cryptoClient.PublicKey(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
 	if err != nil {
 		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err

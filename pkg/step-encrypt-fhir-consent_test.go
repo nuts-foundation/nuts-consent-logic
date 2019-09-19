@@ -34,26 +34,22 @@ func TestEncryptFhirConsent(t *testing.T) {
 		t.Error(err)
 	}
 
-	custodianId := "agb:00000001"
-	party1Id := "agb:00000002"
-	party2Id := "agb:00000003"
+	custodianID := "agb:00000001"
+	partyID := "agb:00000002"
 
 	cryptoClient := types.NewCryptoClient()
-	_ = cryptoClient.GenerateKeyPairFor(types2.LegalEntity{URI: custodianId})
-	publicKey, _ := cryptoClient.PublicKey(types2.LegalEntity{URI: custodianId})
+	_ = cryptoClient.GenerateKeyPairFor(types2.LegalEntity{URI: custodianID})
+	publicKey, _ := cryptoClient.PublicKey(types2.LegalEntity{URI: custodianID})
 
 	t.Run("it should encrypt the consent resource", func(tt *testing.T) {
 		ctrl := gomock.NewController(tt)
 		registryClient := mock.NewMockRegistryClient(ctrl)
 		defer ctrl.Finish()
-		registryClient.EXPECT().OrganizationById(gomock.Eq(party1Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
-		registryClient.EXPECT().OrganizationById(gomock.Eq(party2Id)).Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(partyID)).Return(&db.Organization{PublicKey: &publicKey}, nil)
 
 		request := CreateConsentRequest{
-			Actors: []IdentifierURI{
-				IdentifierURI(party1Id), IdentifierURI(party2Id),
-			},
-			Custodian: IdentifierURI(custodianId),
+			Actor:     IdentifierURI(partyID),
+			Custodian: IdentifierURI(custodianID),
 		}
 
 		encryptedContent, err := EncryptFhirConsent(registryClient, cryptoClient, string(validConsent), request)
@@ -67,7 +63,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, types2.LegalEntity{URI: custodianId}, )
+		}, types2.LegalEntity{URI: custodianID})
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}

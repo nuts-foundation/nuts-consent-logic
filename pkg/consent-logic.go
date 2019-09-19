@@ -45,7 +45,7 @@ type ConsentLogicConfig struct {
 }
 
 type ConsentLogicClient interface {
-	StartConsentFlow(*CreateConsentRequest) error
+	StartConsentFlow(*CreateConsentRequest) (*uuid.UUID, error)
 	HandleIncomingCordaEvent(*events.Event)
 }
 
@@ -73,30 +73,33 @@ func ConsentLogicInstance() *ConsentLogic {
 }
 
 // StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
-func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) error {
+func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) (*uuid.UUID, error) {
 	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	if err != nil {
-		return fmt.Errorf("error during publishing of event: %v", err)
+		return nil, err
+	}
+	eventUUID, err := uuid.FromString(event.Uuid)
+	if err != nil {
+		return nil, err
 	}
 
 	logger().Debugf("Published NewConsentRequest to bridge with event: %+v", event)
-	return nil
+	return &eventUUID, nil
 }
 
 func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
-	var fhirConsent string
 	var consentID string
-	var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
+	records := []bridgeClient.ConsentRecord{}
+	var legalEntities []bridgeClient.Identifier
 
 	{
 		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
-			//return ctx.JSON(http.StatusForbidden, "Custodian is not a known vendor")
 			return nil, errors.New("custodian is not a known vendor")
 		}
 		logger().Debug("Custodian is known")
@@ -105,68 +108,70 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		if consentID, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
 			fmt.Println(err)
 			// todo: report back the reason why the consentID could not be generated. Probably because the custodian is not managed by this node?
-			return nil, errors.New("could not create the consentID for this combination of subject and custodian")
+			return nil, errors.New("could not create the consentID for this combination of subject, actor and custodian")
 		}
 		logger().Debug("ConsentId generated")
 	}
-	{
-		if fhirConsent, err = CreateFhirConsentResource(*createConsentRequest); fhirConsent == "" || err != nil {
-			return nil, errors.New("could not create the FHIR consent resource")
-		}
-		logger().Debug("FHIR resource created", fhirConsent)
-	}
-	{
-		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
-		}
-		logger().Debug("FHIR resource is valid")
-	}
-	{
-		if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-			return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
-		}
-		logger().Debug("FHIR resource encrypted")
-	}
-	var legalEntities []bridgeClient.Identifier
 
-	cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
-
-	bridgeMeta := bridgeClient.Metadata{
-		Domain: []bridgeClient.Domain{"medical"},
-		Period: bridgeClient.Period{
-			ValidFrom: createConsentRequest.Period.Start,
-			ValidTo:   createConsentRequest.Period.End,
-		},
-		SecureKey: bridgeClient.SymmetricKey{
-			Alg: "AES_GCM", //todo: fix hardcoded alg
-			Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
-		},
-	}
-
-	for _, entity := range createConsentRequest.Actors {
-		legalEntities = append(legalEntities, bridgeClient.Identifier(entity))
-	}
+	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Actor))
 	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
 
-	payloadData := bridgeClient.FullConsentRequestState{
-		ConsentId:     bridgeClient.ConsentId{ExternalId: &consentID},
-		LegalEntities: legalEntities,
-		ConsentRecords: []bridgeClient.ConsentRecord{
-			{
-				CipherText:     &cipherText,
-				Metadata:       &bridgeMeta,
+	for _, record := range createConsentRequest.Records {
+		var fhirConsent string
+		var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
+		{
+			if fhirConsent, err = CreateFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, *createConsentRequest.Performer, record); fhirConsent == "" || err != nil {
+				return nil, errors.New("could not create the FHIR consent resource")
+			}
+			logger().Debug("FHIR resource created", fhirConsent)
+		}
+		{
+			if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+				return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
+			}
+			logger().Debug("FHIR resource is valid")
+		}
+		{
+			if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
+				return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
+			}
+			logger().Debug("FHIR resource encrypted")
+		}
+
+		cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
+
+		bridgeMeta := bridgeClient.Metadata{
+			Domain: []bridgeClient.Domain{"medical"},
+			Period: bridgeClient.Period{
+				ValidFrom: record.Period.Start,
+				ValidTo:   record.Period.End,
 			},
-		},
+			SecureKey: bridgeClient.SymmetricKey{
+				Alg: "AES_GCM", //todo: fix hardcoded alg
+				Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
+			},
+		}
+
+		alg := "RSA-OAEP"
+		for i := range encryptedConsent.CipherTextKeys {
+			ctBase64 := base64.StdEncoding.EncodeToString(encryptedConsent.CipherTextKeys[i])
+			bridgeMeta.OrganisationSecureKeys = append(bridgeMeta.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
+				Alg:         &alg,
+				CipherText:  &ctBase64,
+				LegalEntity: legalEntities[i],
+			})
+		}
+
+		records = append(records, bridgeClient.ConsentRecord{Metadata: &bridgeMeta, CipherText: &cipherText})
 	}
 
-	alg := "RSA-OAEP"
-	for i := range encryptedConsent.CipherTextKeys {
-		ctBase64 := base64.StdEncoding.EncodeToString(encryptedConsent.CipherTextKeys[i])
-		payloadData.ConsentRecords[0].Metadata.OrganisationSecureKeys = append(payloadData.ConsentRecords[0].Metadata.OrganisationSecureKeys, bridgeClient.ASymmetricKey{
-			Alg:         &alg,
-			CipherText:  &ctBase64,
-			LegalEntity: legalEntities[i],
-		})
+	// The eventID is used to follow all the events. The created corda state-branch also gets this id.
+	eventID := uuid.NewV4().String()
+
+	payloadData := bridgeClient.FullConsentRequestState{
+		ConsentId:      bridgeClient.ConsentId{ExternalId: &consentID, UUID: eventID},
+		LegalEntities:  legalEntities,
+		ConsentRecords: records,
 	}
 
 	sjs, err := json.Marshal(payloadData)
@@ -175,10 +180,8 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 	}
 	bsjs := base64.StdEncoding.EncodeToString(sjs)
 
-	//logger().Debugf("Marshalled NewConsentRequest for bridge with state: %+v", payloadData)
-
 	event := &events.Event{
-		Uuid:                 uuid.NewV4().String(),
+		Uuid:                 eventID,
 		Name:                 events.EventConsentRequestConstructed,
 		InitiatorLegalEntity: string(createConsentRequest.Custodian),
 		RetryCount:           0,
@@ -214,19 +217,20 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	// check if all parties signed all attachments, than this request can be finalized by the initiator
 	allSigned := true
 	for _, cr := range crs.ConsentRecords {
-		if len(cr.Signatures) != len(crs.LegalEntities) {
+		if cr.Signatures == nil || len(*cr.Signatures) != len(crs.LegalEntities) {
 			allSigned = false
 		}
 	}
 
 	if allSigned {
 		logger().Debugf("All signatures present for UUID: %s", event.ConsentId)
-		// are we the initiator? InitiatorLegalEntity is only set at the initiating node.
+		// Is this node the initiator? InitiatorLegalEntity is only set at the initiating node.
 		if event.InitiatorLegalEntity != "" {
 
+			// Now check the public keys used by the signatures
 			for _, cr := range crs.ConsentRecords {
-				for _, signature := range cr.Signatures {
-					publicKey := signature.Signature.PublicKey
+				for _, signature := range *cr.Signatures {
+					// Get the published public key from register
 					legalEntityID := signature.LegalEntity
 					legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
 					if err != nil {
@@ -236,7 +240,9 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 						return
 					}
-					// todo when key rotation comes into play, fix this
+					publicKey := signature.Signature.PublicKey
+					// Check if the signatures public key equals the published key
+					// TODO: This uses a single public key per legalEntity. When key rotation comes into play, fix this
 					if legalEntity.PublicKey == nil || *legalEntity.PublicKey != publicKey {
 						errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityID)
 						logger().Debug(errorMsg)
@@ -246,6 +252,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
 					}
+
+					// checking the actual signature here is not required since it's already checked by the CordApp.
 				}
 			}
 
@@ -429,11 +437,15 @@ func (cl ConsentLogic) decryptConsentRecord(cr bridgeClient.ConsentRecord, legal
 // The node can manage more than one legalEntity. This method provides a deterministic way of selecting the current
 // legalEntity to work with. It loops over all legalEntities, selects the ones that still needs to sign and selects
 // the first one which is managed by this node.
-func (cl ConsentLogic) findFirstEntityToSignFor(signatures []bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
+func (cl ConsentLogic) findFirstEntityToSignFor(signatures *[]bridgeClient.PartyAttachmentSignature, identifiers []bridgeClient.Identifier) string {
 	// fill map with signatures legalEntity for easy lookup
 	attSignatures := make(map[string]bool)
-	for _, att := range signatures {
-		attSignatures[string(att.LegalEntity)] = true
+	// signatures can be nil if no signatures have been set yet
+	if signatures != nil {
+		for _, att := range *signatures {
+			attSignatures[string(att.LegalEntity)] = true
+		}
+
 	}
 
 	// Find all LegalEntities managed by this node which still need a signature
@@ -481,7 +493,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 		return
 	}
 
-	var consentRules []cStore.ConsentRule
+	var patientConsents []cStore.PatientConsent
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
@@ -497,20 +509,24 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 				return
 			}
 
-			// todo: check everything for validity again
-			consentRules = append(consentRules, cl.ConsentRulesFromFHIRRecord(fhirConsentString)...)
+			patientConsent := cl.PatientConsentFromFHIRRecord(fhirConsentString)
+			patientConsent.ID = *crs.ConsentId.ExternalId
+			patientConsent.Records[0].Hash = *cr.AttachmentHash
+			patientConsents = append(patientConsents, patientConsent)
+
+			// todo: check the contents of the patientConsent for validity since the other side might have changed it
 
 			// consentrules gathered, continue with the flow
 			break
 		}
 	}
 
-	consentRules = cl.filterConsentRules(consentRules)
-	logger().Debugf("found %d consent rules", len(consentRules))
+	patientConsents = cl.filterConsentRules(patientConsents)
+	logger().Debugf("found %d consent rules", len(patientConsents))
 
-	logger().Debugf("Storing consent: %+v", consentRules)
-	err = cl.NutsConsentStore.RecordConsent(context.Background(), consentRules)
-	if err !=  nil {
+	logger().Debugf("Storing consent: %+v", patientConsents)
+	err = cl.NutsConsentStore.RecordConsent(context.Background(), patientConsents)
+	if err != nil {
 		logger().WithError(err).Error("unable to record the consents")
 		return
 	}
@@ -524,16 +540,16 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 }
 
 // only consent records of which or the custodian or the actor is managed by this node should be stored
-func (cl ConsentLogic) filterConsentRules(allRules []cStore.ConsentRule) []cStore.ConsentRule {
-	var validRules []cStore.ConsentRule
+func (cl ConsentLogic) filterConsentRules(allRules []cStore.PatientConsent) []cStore.PatientConsent {
+	var validRules []cStore.PatientConsent
 	for _, rule := range allRules {
 		// add if custodian is managed by this node
-		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Custodian});  key != "" {
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: rule.Custodian}); key != "" {
 			validRules = append(validRules, rule)
 			continue
 		}
 		// or if the actor is managed by this node
-		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI:rule.Actor}); key != "" {
+		if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: rule.Actor}); key != "" {
 			validRules = append(validRules, rule)
 			continue
 		}
@@ -542,27 +558,23 @@ func (cl ConsentLogic) filterConsentRules(allRules []cStore.ConsentRule) []cStor
 	return validRules
 }
 
-// ConsentRulesFromFHIRRecord extracts a list of consent rules from a FHIR consent record encoded as json string.
-func (ConsentLogic) ConsentRulesFromFHIRRecord(fhirConsentString string) []cStore.ConsentRule {
-	var consentRules []cStore.ConsentRule
-
+// PatientConsentFromFHIRRecord extracts the PatientConsent from a FHIR consent record encoded as json string.
+func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsentString string) cStore.PatientConsent {
 	fhirConsent := gojsonq.New().JSONString(fhirConsentString)
 
-	actors := pkg2.ActorsFrom(fhirConsent)
+	actor := pkg2.ActorsFrom(fhirConsent)[0]
 	custodian := pkg2.CustodianFrom(fhirConsent)
 	subject := pkg2.SubjectFrom(fhirConsent)
 	resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
+	period := pkg2.PeriodFrom(fhirConsent)
+	record := []cStore.ConsentRecord{{Resources: resources, ValidFrom: period[0], ValidTo: period[1]}}
 
-	for _, actor := range actors {
-		consentRules = append(consentRules, cStore.ConsentRule{
-			Actor:     string(actor),
-			Custodian: custodian,
-			Resources: resources,
-			Subject:   subject,
-		})
+	return cStore.PatientConsent{
+		Actor:     string(actor),
+		Custodian: custodian,
+		Subject:   subject,
+		Records:   record,
 	}
-
-	return consentRules
 }
 
 func (ConsentLogic) Configure() error {
