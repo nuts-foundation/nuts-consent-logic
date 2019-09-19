@@ -30,6 +30,9 @@ type CreateConsentRequest struct {
 	Records   []Record
 }
 
+// Record contains derived values from a consent record for a custodian/subject/actor triple.
+// There can be multiple records per triple, each with their own proof and details.
+// More values can be added to this struct later.
 type Record struct {
 	ConsentProof *EmbeddedData
 	Period       *Period

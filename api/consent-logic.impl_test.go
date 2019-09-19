@@ -108,11 +108,11 @@ type JobCreatedResponseMatcher struct{}
 
 // Matches a valid UUID and
 func (JobCreatedResponseMatcher) Matches(x interface{}) bool {
-	jobId := x.(JobCreatedResponse).JobId
-	if jobId == nil {
+	jobID := x.(JobCreatedResponse).JobId
+	if jobID == nil {
 		return false
 	}
-	uuid, err := uuid.FromString(*jobId)
+	uuid, err := uuid.FromString(*jobID)
 	correctVersion := uuid.Version() == 4
 	return err == nil && correctVersion && x.(JobCreatedResponse).ResultCode == "OK"
 }
