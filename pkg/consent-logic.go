@@ -165,8 +165,11 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		records = append(records, bridgeClient.ConsentRecord{Metadata: &bridgeMeta, CipherText: &cipherText})
 	}
 
+	// The eventID is used to follow all the events. The created corda state-branch also gets this id.
+	eventID := uuid.NewV4().String()
+
 	payloadData := bridgeClient.FullConsentRequestState{
-		ConsentId:      bridgeClient.ConsentId{ExternalId: &consentID},
+		ConsentId:      bridgeClient.ConsentId{ExternalId: &consentID, UUID: eventID},
 		LegalEntities:  legalEntities,
 		ConsentRecords: records,
 	}
@@ -178,7 +181,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 	bsjs := base64.StdEncoding.EncodeToString(sjs)
 
 	event := &events.Event{
-		Uuid:                 uuid.NewV4().String(),
+		Uuid:                 eventID,
 		Name:                 events.EventConsentRequestConstructed,
 		InitiatorLegalEntity: string(createConsentRequest.Custodian),
 		RetryCount:           0,
