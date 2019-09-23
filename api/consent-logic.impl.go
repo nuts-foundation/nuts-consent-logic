@@ -32,7 +32,7 @@ type Wrapper struct {
 }
 
 // NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
-func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
+func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshal json body:", err)

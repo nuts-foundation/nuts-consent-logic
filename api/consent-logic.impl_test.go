@@ -95,7 +95,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 
 		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
-		err := apiWrapper.CreateConsent(echoServer)
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)

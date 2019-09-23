@@ -95,7 +95,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var consentID string
-	records := []bridgeClient.ConsentRecord{}
+	var records []bridgeClient.ConsentRecord
 	var legalEntities []bridgeClient.Identifier
 
 	{
