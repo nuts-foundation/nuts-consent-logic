@@ -74,15 +74,18 @@ func ConsentLogicInstance() *ConsentLogic {
 
 // StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
 func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentRequest) (*uuid.UUID, error) {
-	event, err := cl.createNewConsentRequestEvent(createConsentRequest)
+	// Create the event to start the consent flow
+	event, err := cl.buildConsentRequestConstructedEvent(createConsentRequest)
 	if err != nil {
 		return nil, err
 	}
 
+	// publish the event
 	err = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	if err != nil {
 		return nil, err
 	}
+	// extract the events UUID
 	eventUUID, err := uuid.FromString(event.Uuid)
 	if err != nil {
 		return nil, err
@@ -92,11 +95,14 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 	return &eventUUID, nil
 }
 
-func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
+func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var consentID string
 	var records []bridgeClient.ConsentRecord
-	var legalEntities []bridgeClient.Identifier
+	legalEntities := []bridgeClient.Identifier{
+		bridgeClient.Identifier(createConsentRequest.Actor),
+		bridgeClient.Identifier(createConsentRequest.Custodian),
+	}
 
 	{
 		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
@@ -112,9 +118,6 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 		}
 		logger().Debug("ConsentId generated")
 	}
-
-	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Actor))
-	legalEntities = append(legalEntities, bridgeClient.Identifier(createConsentRequest.Custodian))
 
 	for _, record := range createConsentRequest.Records {
 		var fhirConsent string
@@ -150,6 +153,7 @@ func (cl ConsentLogic) createNewConsentRequestEvent(createConsentRequest *Create
 				Alg: "AES_GCM", //todo: fix hardcoded alg
 				Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 			},
+			PreviousAttachmentHash: record.PreviousRecordID,
 		}
 
 		alg := "RSA-OAEP"

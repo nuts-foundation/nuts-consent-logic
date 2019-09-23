@@ -257,7 +257,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 		}},
 		Subject: IdentifierURI(subjectID),
 	}
-	event, err := cl.createNewConsentRequestEvent(ccr)
+	event, err := cl.buildConsentRequestConstructedEvent(ccr)
 	if err != nil {
 		t.Error("did not expect error:", err)
 	}
