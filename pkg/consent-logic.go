@@ -143,7 +143,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		}
 
 		cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
-		consentRecordHash := sha256.Sum256([]byte(fhirConsent))
+		consentRecordHash := hashFHIRConsent(fhirConsent)
 
 		bridgeMeta := bridgeClient.Metadata{
 			Domain: []bridgeClient.Domain{"medical"},
@@ -156,7 +156,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 				Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 			},
 			PreviousAttachmentHash: record.PreviousRecordID,
-			ConsentRecordHash: string(consentRecordHash[:]),
+			ConsentRecordHash: consentRecordHash,
 		}
 
 		alg := "RSA-OAEP"
@@ -544,6 +544,11 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 		logger().WithError(err).Error("unable to publish the EventCompleted event")
 		return
 	}
+}
+
+// hashFHIRConsent generates a consistent hash of the fhirConsent record
+func hashFHIRConsent(fhirConsent string) string {
+	return fmt.Sprintf("%x",sha256.Sum256([]byte(fhirConsent)))
 }
 
 // only consent records of which or the custodian or the actor is managed by this node should be stored

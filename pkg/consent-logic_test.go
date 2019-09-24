@@ -483,3 +483,11 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 	}
 	cl.HandleEventConsentDistributed(event)
 }
+
+func Test_hashFHIRConsent(t *testing.T) {
+	// expected value calculated by command `$ echo -n "test" | shasum -a 256`
+	expected := "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+	if got := hashFHIRConsent("test"); got != expected  {
+		t.Errorf("expected correct shasum of fhir consent. got: [%s] expected: [%s]", got, expected)
+	}
+}
