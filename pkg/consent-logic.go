@@ -20,6 +20,7 @@ package pkg
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
@@ -142,6 +143,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		}
 
 		cipherText := base64.StdEncoding.EncodeToString(encryptedConsent.CipherText)
+		consentRecordHash := sha256.Sum256([]byte(fhirConsent))
 
 		bridgeMeta := bridgeClient.Metadata{
 			Domain: []bridgeClient.Domain{"medical"},
@@ -154,6 +156,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 				Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 			},
 			PreviousAttachmentHash: record.PreviousRecordID,
+			ConsentRecordHash: string(consentRecordHash[:]),
 		}
 
 		alg := "RSA-OAEP"

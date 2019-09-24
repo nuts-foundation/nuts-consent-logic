@@ -19,6 +19,7 @@
 package pkg
 
 import (
+	"encoding/json"
 	"github.com/cbroglie/mustache"
 	"regexp"
 	"strings"
@@ -183,5 +184,16 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 	re := regexp.MustCompile(`\},(\s*)]`)
 	res = re.ReplaceAllString(res, `}$1]`)
 
-	return res, nil
+	return cleanupJSON(res)
+}
+
+// clean up the json hash
+func cleanupJSON(value string) (string, error) {
+	var parsedValue interface{}
+	json.Unmarshal([]byte(value), &parsedValue)
+	cleanValue, err := json.Marshal(parsedValue)
+	if err != nil {
+		return "", err
+	}
+	return string(cleanValue), nil
 }
