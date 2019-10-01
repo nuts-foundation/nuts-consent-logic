@@ -280,7 +280,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 
 }
 
-func TestConsentLogic_filterConssentRules(t *testing.T) {
+func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 	allRules := []pkg3.PatientConsent{{
 		Custodian: "00000001",
 		Actor:     "00000002",
@@ -298,12 +298,11 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConsentRules(allRules)
-		if len(filteredRules) != 1 {
-			t.Errorf("Expected only one valid rule")
+		if !cl.isRelevantForThisNode(allRules[0]) {
+			t.Error("expected rule to be valid")
 		}
-		if filteredRules[0].Actor != "00000002" {
-			t.Errorf("expected different actor")
+		if cl.isRelevantForThisNode(allRules[1]) {
+			t.Error("expected rule to be invalid")
 		}
 	})
 
@@ -316,15 +315,11 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConsentRules(allRules)
-		if len(filteredRules) != 2 {
-			t.Errorf("Expected two valid rules")
+		if !cl.isRelevantForThisNode(allRules[0]) {
+			t.Error("expected rule to be valid")
 		}
-		if filteredRules[0].Actor != "00000002" {
-			t.Errorf("expected different actor, got: %s", filteredRules[0].Actor)
-		}
-		if filteredRules[1].Actor != "00000003" {
-			t.Errorf("expected different actor, got: %s", filteredRules[1].Actor)
+		if !cl.isRelevantForThisNode(allRules[1]) {
+			t.Error("expected rule to be valid")
 		}
 	})
 	t.Run("current node manges custodian", func(t *testing.T) {
@@ -336,15 +331,11 @@ func TestConsentLogic_filterConssentRules(t *testing.T) {
 		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
-		filteredRules := cl.filterConsentRules(allRules)
-		if len(filteredRules) != 2 {
-			t.Errorf("Expected two valid rules")
+		if !cl.isRelevantForThisNode(allRules[0]) {
+			t.Error("expected rule to be valid")
 		}
-		if filteredRules[0].Actor != "00000002" {
-			t.Errorf("expected different actor, got: %s", filteredRules[0].Actor)
-		}
-		if filteredRules[1].Actor != "00000003" {
-			t.Errorf("expected different actor, got: %s", filteredRules[1].Actor)
+		if !cl.isRelevantForThisNode(allRules[1]) {
+			t.Error("expected rule to be valid")
 		}
 	})
 }
@@ -412,12 +403,13 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
+	consentWithHash := FHIRResourceWithHash{FHIRResource:string(validConsent), Hash:"123"}
 	if err != nil {
 		t.Error(err)
 	}
 
 	cl := ConsentLogic{}
-	patientConsent := cl.PatientConsentFromFHIRRecord(string(validConsent))
+	patientConsent := cl.PatientConsentFromFHIRRecord([]FHIRResourceWithHash{consentWithHash})
 
 	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
 	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
