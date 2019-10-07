@@ -18,8 +18,9 @@ type ConsentRecord struct {
 		// Embedded struct due to allOf(#/components/schemas/EmbeddedData)
 		EmbeddedData
 	} `json:"consentProof"`
-	DataRef *DataIdentifier `json:"dataRef,omitempty"`
-	Period  Period          `json:"period"`
+	DataRef          *DataIdentifier `json:"dataRef,omitempty"`
+	Period           Period          `json:"period"`
+	PreviousRecordID *string         `json:"previousRecordID,omitempty"`
 }
 
 // CreateConsentRequest defines model for CreateConsentRequest.
@@ -64,16 +65,16 @@ type Period struct {
 // SubjectURI defines model for SubjectURI.
 type SubjectURI string
 
-// createConsentJSONBody defines parameters for CreateConsent.
-type createConsentJSONBody CreateConsentRequest
+// createOrUpdateConsentJSONBody defines parameters for CreateOrUpdateConsent.
+type createOrUpdateConsentJSONBody CreateConsentRequest
 
-// CreateConsentRequestBody defines body for CreateConsent for application/json ContentType.
-type CreateConsentJSONRequestBody createConsentJSONBody
+// CreateOrUpdateConsentRequestBody defines body for CreateOrUpdateConsent for application/json ContentType.
+type CreateOrUpdateConsentJSONRequestBody createOrUpdateConsentJSONBody
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Create a new consent.// (POST /api/consent)
-	CreateConsent(ctx echo.Context) error
+	// Create or update a new consent.// (POST /api/consent)
+	CreateOrUpdateConsent(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -81,12 +82,12 @@ type ServerInterfaceWrapper struct {
 	Handler ServerInterface
 }
 
-// CreateConsent converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateConsent(ctx echo.Context) error {
+// CreateOrUpdateConsent converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshalled arguments
-	err = w.Handler.CreateConsent(ctx)
+	err = w.Handler.CreateOrUpdateConsent(ctx)
 	return err
 }
 
@@ -97,7 +98,7 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 		Handler: si,
 	}
 
-	router.POST("/api/consent", wrapper.CreateConsent)
+	router.POST("/api/consent", wrapper.CreateOrUpdateConsent)
 
 }
 

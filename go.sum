@@ -293,6 +293,8 @@ github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190919081347-12c093
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190919081347-12c0939fa602/go.mod h1:X7rj6iTV1YoDoNyzyZJZQi2yCUVrDuaf1FIgo9+c5PU=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190919103249-203c9e16e1f1 h1:xMKnzjJOsEwGeRuV87ASsQfzbHcc7Rc+qUGxjYBSj6Q=
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190919103249-203c9e16e1f1/go.mod h1:X7rj6iTV1YoDoNyzyZJZQi2yCUVrDuaf1FIgo9+c5PU=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190923142915-d3851c17a391 h1:y44ATD2EK73fHp4EHPWI1rvxzzkwLzFdlkH3l3WZe5A=
+github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20190923142915-d3851c17a391/go.mod h1:X7rj6iTV1YoDoNyzyZJZQi2yCUVrDuaf1FIgo9+c5PU=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12 h1:qkvfEi4ftwT3OvB/FrPV+a+ksyqKgWiXp82kgZ1y5R0=
 github.com/nuts-foundation/nuts-auth v0.0.0-20190703140706-f8d19516db12/go.mod h1:Ps3MsC6diRRJkImRANrSkPtu3fE46HKUrwiN+KMyIRk=
 github.com/nuts-foundation/nuts-consent-logic v0.0.0-20190611125028-90459f4fa533/go.mod h1:n0gCA6ub8bB/oOW6ZHd650sO6jtC67jN05oTpu2b3tE=
@@ -313,6 +315,8 @@ github.com/nuts-foundation/nuts-consent-store v0.0.0-20190917125803-84eb6b1bb97d
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20190917125803-84eb6b1bb97d/go.mod h1:LF/95tFJVzjEWzC/eXlHs84QeblyNivwuWG5AyAiHo0=
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20190917142201-33c1d0240f13 h1:XcRFcQVJAIpuK7Sc95iaL535Be0pzPceFnDKHzE0CI0=
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20190917142201-33c1d0240f13/go.mod h1:LF/95tFJVzjEWzC/eXlHs84QeblyNivwuWG5AyAiHo0=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20190924081106-9f96e9ecf5c0 h1:2s6YaQQXVPHYH+mfM/p7Mzq4wNh2ujh+9Ck4dghBazk=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20190924081106-9f96e9ecf5c0/go.mod h1:LF/95tFJVzjEWzC/eXlHs84QeblyNivwuWG5AyAiHo0=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190514100741-540cb973b331/go.mod h1:WYfWFdU0lVkXCBuNNPAPfo6y6xwIEzMpLp3CkfTEto4=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190528080626-e86cf752a066 h1:mx4VF1Wp9sTqV0sojKoFkOKB7RFWTG4S4LnvGjPJSvA=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20190528080626-e86cf752a066/go.mod h1:m1QkgQOor1ntbMGy1un6m+Gc9kFDDr+DwhL8v+sZk4g=

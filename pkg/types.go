@@ -34,8 +34,12 @@ type CreateConsentRequest struct {
 // There can be multiple records per triple, each with their own proof and details.
 // More values can be added to this struct later.
 type Record struct {
-	ConsentProof *EmbeddedData
-	Period       *Period
+	// RecordID refers to the current hash of the decoded attachment
+	RecordID *string
+	// PreviousRecordID refers to a previous record.
+	PreviousRecordID *string
+	ConsentProof     *EmbeddedData
+	Period           *Period
 }
 
 // EmbeddedData defines component schema for EmbeddedData.

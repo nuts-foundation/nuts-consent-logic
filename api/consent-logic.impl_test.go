@@ -95,12 +95,50 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 
 		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
-		err := apiWrapper.CreateConsent(echoServer)
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
 		}
 	})
+}
+
+func Test_apiRequest2Internal(t *testing.T) {
+	performer := IdentifierURI("performer")
+	previousId := "-1"
+	start := time.Time{}
+	end := time.Time{}.AddDate(1, 0, 0)
+
+	apiRequest := CreateConsentRequest{
+		Actor:     "actor",
+		Custodian: "custodian",
+		Subject:   "subject",
+		Performer: &performer,
+		Records: []ConsentRecord{{
+			ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{
+				ContentType: "text/plain",
+				Data:        "base64encodedProof",
+			}},
+			PreviousRecordID: &previousId,
+			Period: Period{
+				End:   &end,
+				Start: start,
+			},
+		}},
+	}
+	internal := apiRequest2Internal(apiRequest)
+	if internal.Actor != "actor" || internal.Custodian != "custodian" || internal.Subject != "subject" || *internal.Performer != "performer" || len(internal.Records) != 1 {
+		t.Errorf("wrong conversion of apiRequest to internal format. apiRequest: %+v, internalFormat: %+v", apiRequest, internal)
+	}
+
+	internalRecord := internal.Records[0]
+	apiRecord := apiRequest.Records[0]
+	if *internalRecord.PreviousRecordID != *apiRecord.PreviousRecordID ||
+		internalRecord.ConsentProof.Data != apiRecord.ConsentProof.Data ||
+		internalRecord.ConsentProof.ContentType != "text/plain" ||
+		internalRecord.Period.Start != start || internalRecord.Period.End != &end {
+		t.Errorf("wrong conversion of internalRecord. apiRecord: %+v, internalRecord: %+v", apiRecord, internalRecord)
+	}
 }
 
 // A matcher to check for successful jobCreateResponse
@@ -135,7 +173,4 @@ func wrapper(registryClient registry.RegistryClient, cryptoClient crypto.Client,
 			EventPublisher:   publisher,
 		},
 	}
-}
-
-func TestApiResource_NutsConsentLogicValidateConsent(t *testing.T) {
 }

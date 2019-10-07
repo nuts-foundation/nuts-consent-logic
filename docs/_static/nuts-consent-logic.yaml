@@ -18,19 +18,28 @@ info:
 paths:
   '/api/consent':
     post:
-      summary: Create a new consent.
+      summary: Create or update a new consent.
       description: |
+        Create or update a consent for the triple custodian, subject and actor.
+
+        If this is the first registration for the triple, a new PatientConsent with ConsentRecords will be created.
+        ConsentRecords can be added to a PatientConsent by calling the endpoint again with new records.
+        ConsentRecords can be 'updated' by calling the endpoint again with a new record which refers to the PreviousRecordID. The old record gets archived and replaced by the new ConsentRecord.
+        ConsentRecords can be 'deleted' by updating the ConsentRecord with a new Period.End.
+
         During the initiation of a consent-flow, it performs the following steps:
-        * Check custodian is in the list of Vendors
-        * Get the consentId for the subject
-        * Create the FHIR Consent-resource
-        * Validate the FHIR Consent-resource
+        * Check custodian is in the list of Vendors of this node
+        * Get the consentID for the subject
+        * For each ConsentRecord create a FHIR Consent-resource
+        * Validate the FHIR Consent-resources
         * Get a new shared key from _crypto service_
-        * Encrypt the FHIR Consent-resource with shared key
+        * Encrypt the FHIR Consent-resources with shared key
         * For each actor: get the public key from registry
         * For each actor: encrypt the shared key with actors public key
         * Create request to consent bridge
-      operationId: createConsent
+
+        The endpoint returns a JobID which can be used to track the progress while it is in flight.
+      operationId: createOrUpdateConsent
       requestBody:
         required: true
         content:
@@ -158,6 +167,10 @@ components:
             data: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
           allOf:
             - $ref: "#/components/schemas/EmbeddedData"
+        previousRecordID:
+          type: string
+          description: |
+            Optional parameter. If provided, the previous consentRecord will be replaced by this new ConsentRecord.
         period:
           $ref: "#/components/schemas/Period"
         dataRef:

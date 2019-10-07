@@ -32,7 +32,7 @@ type Wrapper struct {
 }
 
 // NutsConsentLogicCreateConsent Creates the consent FHIR resource, validate it and sends it to the consent-bridge.
-func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
+func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 	createConsentApiRequest := &CreateConsentRequest{}
 	if err := ctx.Bind(createConsentApiRequest); err != nil {
 		ctx.Logger().Error("Could not unmarshal json body:", err)
@@ -79,10 +79,11 @@ func (wrapper Wrapper) CreateConsent(ctx echo.Context) error {
 // Convert the public generated data type to the internal type.
 // This abstraction makes the app more robust to api changes.
 func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequest {
-	//convert api type to internal type
-	createConsentRequest := &pkg.CreateConsentRequest{}
-	createConsentRequest.Custodian = pkg.IdentifierURI(apiRequest.Custodian)
-	createConsentRequest.Subject = pkg.IdentifierURI(apiRequest.Subject)
+	createConsentRequest := &pkg.CreateConsentRequest{
+		Custodian: pkg.IdentifierURI(apiRequest.Custodian),
+		Subject:   pkg.IdentifierURI(apiRequest.Subject),
+		Actor:     pkg.IdentifierURI(apiRequest.Actor),
+	}
 
 	var performer pkg.IdentifierURI
 	if apiRequest.Performer != nil {
@@ -91,19 +92,21 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 	}
 
 	for _, record := range apiRequest.Records {
-		newRecord := pkg.Record{}
+		newRecord := pkg.Record{
+			PreviousRecordID: record.PreviousRecordID,
+		}
 
 		period := pkg.Period{Start: record.Period.Start, End: record.Period.End}
 		newRecord.Period = &period
 
 		consentProof := &pkg.EmbeddedData{
 			ContentType: record.ConsentProof.ContentType,
-			Data:        record.ConsentProof.ContentType,
+			Data:        record.ConsentProof.Data,
 		}
 		newRecord.ConsentProof = consentProof
+
 		createConsentRequest.Records = append(createConsentRequest.Records, newRecord)
 	}
-	createConsentRequest.Actor = pkg.IdentifierURI(apiRequest.Actor)
 
 	return createConsentRequest
 }
