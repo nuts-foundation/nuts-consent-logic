@@ -101,4 +101,3 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 	router.POST("/api/consent", wrapper.CreateOrUpdateConsent)
 
 }
-

@@ -403,7 +403,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
-	consentWithHash := FHIRResourceWithHash{FHIRResource:string(validConsent), Hash:"123"}
+	consentWithHash := FHIRResourceWithHash{FHIRResource: string(validConsent), Hash: "123"}
 	if err != nil {
 		t.Error(err)
 	}
@@ -457,7 +457,7 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation",}}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
+		Records:   []pkg3.ConsentRecord{{Resources: []pkg3.Resource{{ConsentRecordID: 0, ResourceType: "Observation"}}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
 	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)
@@ -479,7 +479,7 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 func Test_hashFHIRConsent(t *testing.T) {
 	// expected value calculated by command `$ echo -n "test" | shasum -a 256`
 	expected := "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
-	if got := hashFHIRConsent("test"); got != expected  {
+	if got := hashFHIRConsent("test"); got != expected {
 		t.Errorf("expected correct shasum of fhir consent. got: [%s] expected: [%s]", got, expected)
 	}
 }
