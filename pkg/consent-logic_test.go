@@ -69,8 +69,30 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		registryMock := mock3.NewMockRegistryClient(ctrl)
-		publicKey := "publicKeyFor00000002"
-		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey}, nil)
+		publicKey1 := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh
+8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
+iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
+0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
+aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
+rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
+kQIDAQAB
+-----END PUBLIC KEY-----`
+
+		// same key with different white space
+		publicKey2 := `-----BEGIN PUBLIC KEY-----
+        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh 
+
+8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
+
+iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
+0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
+aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
+rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
+kQIDAQAB
+-----END PUBLIC KEY-----`
+
+		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey1}, nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
@@ -78,7 +100,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			{
 				Attachment:  "123",
 				LegalEntity: "urn:agb:00000002",
-				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: "publicKeyFor00000002"},
+				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: publicKey2},
 			},
 		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
