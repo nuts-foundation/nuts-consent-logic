@@ -253,6 +253,8 @@ github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191014143304-10ea72
 github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191014143304-10ea721a4c18/go.mod h1:H0OsD+c4aBe6RLKoxV1yN1Is+G0BNFkgwYc8bAN5QHY=
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20191014140043-3b84db6400fe h1:KfCouxdmL5ckavyW2bcYgetLcb2ecLRzYDGeGgGqSeA=
 github.com/nuts-foundation/nuts-consent-store v0.0.0-20191014140043-3b84db6400fe/go.mod h1:GfB/poKtNZBDY2GSv8C7Gi8pNvC9H1qTVSoruFbfo/E=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20191015073411-949b9210b40c h1:x5eY7XnF78bdvsALlNsx5eWDLqAeQYEKH6vSC0mGblg=
+github.com/nuts-foundation/nuts-consent-store v0.0.0-20191015073411-949b9210b40c/go.mod h1:bH5JYC0NLMaqskVEciW30DDTyrsco9jg2V1FmGJAUls=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20191014143839-b821f40188eb h1:uCAPbcRd4AGA4ESPyaqjh7N95/9oAOzQyrlDsVAVi1w=
 github.com/nuts-foundation/nuts-crypto v0.0.0-20191014143839-b821f40188eb/go.mod h1:WNMswlZklnh9IOee1Se/e8FpL7H7bn5FPchgoSgKSKw=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191014145431-c450e6d4822e h1:s/tvSjAAZ1RKcMrQuD8vcuawALpwhjbceFVv2WbDFp0=
