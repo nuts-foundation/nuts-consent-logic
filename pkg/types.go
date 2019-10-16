@@ -39,7 +39,7 @@ type Record struct {
 	// PreviousRecordID refers to a previous record.
 	PreviousRecordID *string
 	ConsentProof     *EmbeddedData
-	Period           *Period
+	Period           Period
 }
 
 // EmbeddedData defines component schema for EmbeddedData.
