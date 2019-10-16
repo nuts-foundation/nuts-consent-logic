@@ -251,6 +251,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 					// Check if the signatures public key equals the published key
 					// TODO: This uses a single public key per legalEntity. When key rotation comes into play, fix this
+					// Fixme: this error handling should be rewritten
 					pKeyFromRegistry, err := crypto.PemToPublicKey([]byte(*legalEntity.PublicKey))
 					if err != nil {
 						errorMsg := fmt.Sprintf("Could not parse public key from registry: %s", err)
