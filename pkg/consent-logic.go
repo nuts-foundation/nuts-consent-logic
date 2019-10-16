@@ -39,7 +39,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/thedevsaddam/gojsonq.v2"
-	"strings"
+	"reflect"
 	"sync"
 )
 
@@ -248,14 +248,31 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 						return
 					}
-					publicKey := signature.Signature.PublicKey
+
 					// Check if the signatures public key equals the published key
 					// TODO: This uses a single public key per legalEntity. When key rotation comes into play, fix this
-					if legalEntity.PublicKey == nil || strings.TrimSpace(*legalEntity.PublicKey) != strings.TrimSpace(publicKey) {
+					// Fixme: this error handling should be rewritten
+					pKeyFromRegistry, err := crypto.PemToPublicKey([]byte(*legalEntity.PublicKey))
+					if err != nil {
+						errorMsg := fmt.Sprintf("Could not parse public key from registry: %s", err)
+						logger().Warn(errorMsg)
+						event.Error = &errorMsg
+						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						return
+					}
+					pKeyFromSignature, err := crypto.PemToPublicKey([]byte(signature.Signature.PublicKey))
+					if err != nil {
+						errorMsg := fmt.Sprintf("Could not parse public key from signature: %s", err)
+						logger().Warn(errorMsg)
+						event.Error = &errorMsg
+						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						return
+					}
+					if !reflect.DeepEqual(pKeyFromRegistry, pKeyFromSignature) {
 						errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityID)
 						logger().Debug(errorMsg)
 						logger().Debugf("publicKey from registry: %s ", *legalEntity.PublicKey)
-						logger().Debugf("publicKey from signature: %s ", publicKey)
+						logger().Debugf("publicKey from signature: %s ", signature.Signature.PublicKey)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
