@@ -40,6 +40,7 @@ import (
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -621,11 +622,6 @@ kQIDAQAB
 	}
 	consentLogic := &ConsentLogic{NutsRegistry: registryMock, NutsCrypto: cryptoMock}
 	event, err := consentLogic.buildConsentRequestConstructedEvent(createConsentRequest)
-	if err != nil {
-		t.Errorf("did not expect error: %s", err)
-	}
-
-	if event == nil {
-		t.Error("expected event not to be nil")
-	}
+	assert.Nil(t, err)
+	assert.NotNil(t, event, "event should not be nil")
 }
