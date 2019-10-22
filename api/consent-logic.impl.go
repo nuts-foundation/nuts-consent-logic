@@ -19,7 +19,6 @@
 package api
 
 import (
-	"errors"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	"net/http"
@@ -39,7 +38,19 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		return err
 	}
 
-	// Validate if the request has at least one record
+	// Validate all required fields
+	if createConsentApiRequest.Custodian == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires a custodian")
+	}
+
+	if createConsentApiRequest.Subject == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires a subject")
+	}
+
+	if createConsentApiRequest.Actor == ""{
+		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires an actor")
+	}
+
 	if len(createConsentApiRequest.Records) < 1 {
 		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires at least one record")
 	}
@@ -47,18 +58,13 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 	nullTime := time.Time{}
 	for _, record := range createConsentApiRequest.Records {
 		// Validate if each record has a valid period Start:
-
 		if record.Period.Start == nullTime {
-			err := errors.New("period.start time is required")
-			ctx.Logger().Error(err)
-			return err
+			return echo.NewHTTPError(http.StatusBadRequest, "the consent record requires a period.start")
 		}
 
 		// Validate if each record has a valid proof
 		if record.ConsentProof.Data == "" || record.ConsentProof.ContentType == "" {
-			err := errors.New("each consent record needs a valid proof")
-			ctx.Logger().Error(err)
-			return err
+			return echo.NewHTTPError(http.StatusBadRequest, "the consent record requires a valid proof")
 		}
 	}
 

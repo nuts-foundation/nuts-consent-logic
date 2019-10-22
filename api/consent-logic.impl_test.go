@@ -47,17 +47,40 @@ func (EventPublisherMock) Publish(subject string, event pkg2.Event) error {
 	return nil
 }
 
+func jsonRequest() CreateConsentRequest {
+	// optional params:
+	performer := IdentifierURI("agb:00000007")
+	endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
+
+	// complete request
+	return CreateConsentRequest{
+		Records: []ConsentRecord{
+			{
+				Period:       Period{Start: time.Now(), End: &endDate},
+				ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType: "text/plain"}},
+			},
+			{
+				Period:       Period{Start: time.Now(), End: &endDate},
+				ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType: "text/plain"}},
+			},
+		},
+		Actor:     ActorURI("agb:00000001"),
+		Custodian: CustodianURI("agb:00000007"),
+		Subject:   SubjectURI("bsn:99999990"),
+		Performer: &performer,
+	}
+
+}
+
 func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
+
 	t.Run("It starts a consent flow", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 
 		registryMock := registrymock.NewMockRegistryClient(ctrl)
 		cryptoMock := cryptomock.NewMockClient(ctrl)
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
-
 		publicKey := "123"
-		endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
-
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
 		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
@@ -68,27 +91,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		defer ctrl.Finish()
 		echoServer := mock.NewMockContext(ctrl)
 
-		performer := IdentifierURI("agb:00000007")
-
-		// provide the request
-		jsonRequest := &CreateConsentRequest{
-			Records: []ConsentRecord{
-				{
-					Period:       Period{Start: time.Now(), End: &endDate},
-					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType: "text/plain"}},
-				},
-				{
-					Period:       Period{Start: time.Now(), End: &endDate},
-					ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType: "text/plain"}},
-				},
-			},
-			Actor:     ActorURI("agb:00000001"),
-			Custodian: CustodianURI("agb:00000007"),
-			Subject:   SubjectURI("bsn:99999990"),
-			Performer: &performer,
-		}
-
-		jsonData, _ := json.Marshal(*jsonRequest)
+		jsonData, _ := json.Marshal(jsonRequest())
 
 		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
 			_ = json.Unmarshal(jsonData, f)
@@ -113,9 +116,114 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 		if assert.Error(t, err) {
-			assert.Equal(t, err.(*echo.HTTPError).Message, "the consent requires at least one record")
+			assert.Equal(t, "the consent requires a custodian", err.(*echo.HTTPError).Message)
 		}
 	})
+
+	t.Run("It handles an a missing subject", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Subject = ""
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent requires a subject", err.(*echo.HTTPError).Message)
+		}
+	})
+	t.Run("It handles an a missing actor", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Actor = ""
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent requires an actor", err.(*echo.HTTPError).Message)
+		}
+	})
+
+	t.Run("It handles empty record array", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records = []ConsentRecord{}
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent requires at least one record", err.(*echo.HTTPError).Message)
+		}
+	})
+
+	t.Run("A record must have a period.start", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records[0].Period.Start = time.Time{}
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent record requires a period.start", err.(*echo.HTTPError).Message)
+		}
+	})
+
+	t.Run("A record must have a valid proof", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records[0].ConsentProof = struct{ EmbeddedData }{EmbeddedData: EmbeddedData{}}
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent record requires a valid proof", err.(*echo.HTTPError).Message)
+		}
+	})
+
 }
 
 func Test_apiRequest2Internal(t *testing.T) {
