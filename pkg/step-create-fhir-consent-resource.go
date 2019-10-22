@@ -162,7 +162,10 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 			"Start": record.Period.Start.Format(time.RFC3339),
 		},
 		"consentProof": record.ConsentProof,
-		"performerId":  valueFromUrn(string(performer)),
+	}
+
+	if performer != "" {
+		viewModel["performerId"] = valueFromUrn(string(performer))
 	}
 
 	periodEnd := record.Period.End

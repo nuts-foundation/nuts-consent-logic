@@ -96,8 +96,7 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 			PreviousRecordID: record.PreviousRecordID,
 		}
 
-		period := pkg.Period{Start: record.Period.Start, End: record.Period.End}
-		newRecord.Period = &period
+		newRecord.Period = pkg.Period{Start: record.Period.Start, End: record.Period.End}
 
 		consentProof := &pkg.EmbeddedData{
 			ContentType: record.ConsentProof.ContentType,

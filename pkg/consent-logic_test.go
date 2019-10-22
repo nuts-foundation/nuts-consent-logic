@@ -40,6 +40,7 @@ import (
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
+	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -358,7 +359,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 		Custodian: IdentifierURI(custodianID),
 		Performer: &performer,
 		Records: []Record{{
-			Period:       &Period{Start: time.Now()},
+			Period:       Period{Start: time.Now()},
 			ConsentProof: nil,
 		}},
 		Subject: IdentifierURI(subjectID),
@@ -588,4 +589,39 @@ func Test_hashFHIRConsent(t *testing.T) {
 	if got := hashFHIRConsent("test"); got != expected {
 		t.Errorf("expected correct shasum of fhir consent. got: [%s] expected: [%s]", got, expected)
 	}
+}
+
+func TestConsentLogic_buildConsentRequestConstructedEvent(t *testing.T) {
+	validPublicKey := `-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh
+8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
+iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
+0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
+aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
+rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
+kQIDAQAB
+-----END PUBLIC KEY-----`
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	cryptoMock := mock2.NewMockClient(ctrl)
+	registryMock := mock3.NewMockRegistryClient(ctrl)
+	custodianAGB := "urn:agb:00000001"
+	actorAGB := "urn:agb:00000002"
+
+	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return("key", nil)
+	cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
+	cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
+
+	createConsentRequest := &CreateConsentRequest{
+		Custodian: IdentifierURI(custodianAGB),
+		Subject:   "bsn:1234",
+		Actor:     IdentifierURI(actorAGB),
+		Records:   []Record{{}},
+	}
+	consentLogic := &ConsentLogic{NutsRegistry: registryMock, NutsCrypto: cryptoMock}
+	event, err := consentLogic.buildConsentRequestConstructedEvent(createConsentRequest)
+	assert.Nil(t, err)
+	assert.NotNil(t, event, "event should not be nil")
 }

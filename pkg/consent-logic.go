@@ -125,7 +125,11 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		var fhirConsent string
 		var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 		{
-			if fhirConsent, err = CreateFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, *createConsentRequest.Performer, record); fhirConsent == "" || err != nil {
+			var performer IdentifierURI
+			if createConsentRequest.Performer != nil {
+				performer = *createConsentRequest.Performer
+			}
+			if fhirConsent, err = CreateFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, performer, record); fhirConsent == "" || err != nil {
 				return nil, errors.New("could not create the FHIR consent resource")
 			}
 			logger().Debug("FHIR resource created", fhirConsent)
