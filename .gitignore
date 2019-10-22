@@ -8,3 +8,4 @@ coverage.txt
 
 # ignore all generated pem files
 *.pem
+*.Db
