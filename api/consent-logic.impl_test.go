@@ -21,6 +21,7 @@ package api
 import (
 	"encoding/json"
 	"github.com/golang/mock/gomock"
+	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	cryptomock "github.com/nuts-foundation/nuts-crypto/mock"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
@@ -32,6 +33,7 @@ import (
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
 	"time"
@@ -99,6 +101,19 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 
 		if err != nil {
 			t.Errorf("Expected no error, got %v", err)
+		}
+	})
+	t.Run("It handles an empty request body", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, err.(*echo.HTTPError).Message, "the consent requires at least one record")
 		}
 	})
 }

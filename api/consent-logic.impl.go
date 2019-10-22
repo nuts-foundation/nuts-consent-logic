@@ -41,9 +41,7 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 
 	// Validate if the request has at least one record
 	if len(createConsentApiRequest.Records) < 1 {
-		err := errors.New("the consent requires at least one record")
-		ctx.Logger().Error(err)
-		return err
+		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires at least one record")
 	}
 
 	nullTime := time.Time{}
