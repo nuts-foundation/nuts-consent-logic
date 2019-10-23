@@ -380,7 +380,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	}
 
 	// the event contains a valid UUID
-	_, err = uuid.FromString(event.Uuid)
+	_, err = uuid.FromString(event.UUID)
 	if err != nil {
 		t.Error("event does not contain a valid UUID", err)
 	}

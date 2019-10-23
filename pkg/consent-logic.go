@@ -88,7 +88,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 		return nil, err
 	}
 	// extract the events UUID
-	eventUUID, err := uuid.FromString(event.Uuid)
+	eventUUID, err := uuid.FromString(event.UUID)
 	if err != nil {
 		return nil, err
 	}
@@ -193,11 +193,11 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	bsjs := base64.StdEncoding.EncodeToString(sjs)
 
 	event := &events.Event{
-		Uuid:                 eventID,
+		UUID:                 eventID,
 		Name:                 events.EventConsentRequestConstructed,
 		InitiatorLegalEntity: string(createConsentRequest.Custodian),
 		RetryCount:           0,
-		ExternalId:           consentID,
+		ExternalID:           consentID,
 		Payload:              bsjs,
 	}
 	return event, nil
@@ -235,7 +235,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	}
 
 	if allSigned {
-		logger().Debugf("All signatures present for UUID: %s", event.ConsentId)
+		logger().Debugf("All signatures present for UUID: %s", event.ConsentID)
 		// Is this node the initiator? InitiatorLegalEntity is only set at the initiating node.
 		if event.InitiatorLegalEntity != "" {
 
@@ -286,7 +286,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 				}
 			}
 
-			logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentId)
+			logger().Debugf("Sending FinalizeRequest to bridge for UUID: %s", event.ConsentID)
 			event.Name = events.EventAllSignaturesPresent
 			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 		} else {
