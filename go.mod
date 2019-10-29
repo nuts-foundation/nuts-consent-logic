@@ -16,11 +16,11 @@ require (
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191014143304-10ea721a4c18
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191015073411-949b9210b40c
-	github.com/nuts-foundation/nuts-crypto v0.0.0-20191014143839-b821f40188eb
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191023085825-de5b71defe78
+	github.com/nuts-foundation/nuts-crypto v0.0.0-20191015112225-206a68fc8f33
+	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029140651-5bd15f509d70
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20191015073030-4e51e525296c
-	github.com/nuts-foundation/nuts-go-core v0.0.0-20191014142450-dd0fd3a25ffb
-	github.com/nuts-foundation/nuts-registry v0.0.0-20191014144721-4f3a38dc8a9b
+	github.com/nuts-foundation/nuts-go-core v0.0.0-20191028170600-66675906a53a
+	github.com/nuts-foundation/nuts-registry v0.0.0-20191016145829-6bcaa08ad25d
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.4.2
