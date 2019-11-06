@@ -106,19 +106,22 @@ components:
           type: string
           format: date-time
           example: "2019-11-20T17:02:33+10:00"
-    EmbeddedData:
+    DocumentReference:
       type: object
       required:
-        - data
+        - URL
         - contentType
       properties:
-        data:
+        URL:
           type: string
-          description: Base64 encoded data with a content type
-          example: "UGxhaW4gdGV4dCBtZXNzYWdl"
+          description: location where the proof document can be found, should accept Nuts based authentication
+          example: 'https://some.url/path/to/reference.pdf'
         contentType:
           type: string
-          example: 'text/plain'
+          example: 'application/pdf'
+        hash:
+          type: string
+          description: base64 encoded sha256 of the document
     IdentifierURI:
       type: string
       description: "URI defining a party such as a person or organization"
@@ -161,12 +164,13 @@ components:
         - period
       properties:
         consentProof:
-          description: The proof of the consent. E.g. a scan of a signed document, digital signed PDF or irma contract.
+          description: Reference to the proof of the consent. E.g. a scan of a signed document, digital signed PDF or irma contract.
           example:
             contentType: 'application/pdf'
-            data: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
+            URL: 'https://some.url/path/to/reference.pdf'
+            hash: cGRmIGRvY3VtZW50IHdpdGggc2lnbmF0dXJl
           allOf:
-            - $ref: "#/components/schemas/EmbeddedData"
+            - $ref: "#/components/schemas/DocumentReference"
         previousRecordID:
           type: string
           description: |
