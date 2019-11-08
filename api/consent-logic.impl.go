@@ -47,7 +47,7 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires a subject")
 	}
 
-	if createConsentApiRequest.Actor == ""{
+	if createConsentApiRequest.Actor == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "the consent requires an actor")
 	}
 
@@ -63,8 +63,13 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		}
 
 		// Validate if each record has a valid proof
-		if record.ConsentProof.Data == "" || record.ConsentProof.ContentType == "" {
+		if record.ConsentProof.Title == "" || record.ConsentProof.ID == "" {
 			return echo.NewHTTPError(http.StatusBadRequest, "the consent record requires a valid proof")
+		}
+
+		// Validate DataClass
+		if len(record.DataClass) == 0 {
+			return echo.NewHTTPError(http.StatusBadRequest, "the consent record requires at least one data class")
 		}
 	}
 
@@ -102,11 +107,18 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 
 		newRecord.Period = pkg.Period{Start: record.Period.Start, End: record.Period.End}
 
-		consentProof := &pkg.EmbeddedData{
+		consentProof := &pkg.DocumentReference{
+			ID:          record.ConsentProof.ID,
+			Title:       record.ConsentProof.Title,
 			ContentType: record.ConsentProof.ContentType,
-			Data:        record.ConsentProof.Data,
+			URL:         record.ConsentProof.URL,
+			Hash:        record.ConsentProof.Hash,
 		}
 		newRecord.ConsentProof = consentProof
+
+		for _, dc := range record.DataClass {
+			newRecord.DataClass = append(newRecord.DataClass, pkg.IdentifierURI(dc))
+		}
 
 		createConsentRequest.Records = append(createConsentRequest.Records, newRecord)
 	}

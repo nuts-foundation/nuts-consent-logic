@@ -57,11 +57,17 @@ func jsonRequest() CreateConsentRequest {
 		Records: []ConsentRecord{
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
-				ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "proof", ContentType: "text/plain"}},
+				ConsentProof: DocumentReference{Title: "proof", ID: "1"},
+				DataClass:    []DataClassification {
+					"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+				},
 			},
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
-				ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{Data: "other proof", ContentType: "text/plain"}},
+				ConsentProof: DocumentReference{Title: "other.proof", ID: "2"},
+				DataClass:    []DataClassification {
+					"urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL",
+				},
 			},
 		},
 		Actor:     ActorURI("agb:00000001"),
@@ -211,7 +217,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		echoServer := mock.NewMockContext(ctrl)
 
 		jsonRequest := jsonRequest()
-		jsonRequest.Records[0].ConsentProof = struct{ EmbeddedData }{EmbeddedData: EmbeddedData{}}
+		jsonRequest.Records[0].ConsentProof = DocumentReference{}
 		jsonData, _ := json.Marshal(jsonRequest)
 
 		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
@@ -224,6 +230,27 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		}
 	})
 
+	t.Run("A record must have a valid data class", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records[0].DataClass = nil
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "the consent record requires at least one data class", err.(*echo.HTTPError).Message)
+		}
+	})
+
 }
 
 func Test_apiRequest2Internal(t *testing.T) {
@@ -232,16 +259,26 @@ func Test_apiRequest2Internal(t *testing.T) {
 	start := time.Time{}
 	end := time.Time{}.AddDate(1, 0, 0)
 
+	url := "url"
+	contentType := "text/plain"
+	hash := "hash"
+
 	apiRequest := CreateConsentRequest{
 		Actor:     "actor",
 		Custodian: "custodian",
 		Subject:   "subject",
 		Performer: &performer,
 		Records: []ConsentRecord{{
-			ConsentProof: struct{ EmbeddedData }{EmbeddedData: EmbeddedData{
-				ContentType: "text/plain",
-				Data:        "base64encodedProof",
-			}},
+			ConsentProof: DocumentReference{
+				ID:          "3",
+				Title:       "some.consent.doc",
+				URL:         &url,
+				ContentType: &contentType,
+				Hash:        &hash,
+			},
+			DataClass: []DataClassification{
+				"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+			},
 			PreviousRecordID: &previousId,
 			Period: Period{
 				End:   &end,
@@ -250,18 +287,27 @@ func Test_apiRequest2Internal(t *testing.T) {
 		}},
 	}
 	internal := apiRequest2Internal(apiRequest)
-	if internal.Actor != "actor" || internal.Custodian != "custodian" || internal.Subject != "subject" || *internal.Performer != "performer" || len(internal.Records) != 1 {
-		t.Errorf("wrong conversion of apiRequest to internal format. apiRequest: %+v, internalFormat: %+v", apiRequest, internal)
-	}
+
+	assert.Equal(t, "actor", string(internal.Actor))
+	assert.Equal(t, "custodian", string(internal.Custodian))
+	assert.Equal(t, "subject", string(internal.Subject))
+	assert.Equal(t, "performer", string(*internal.Performer))
+	assert.Len(t, internal.Records, 1)
 
 	internalRecord := internal.Records[0]
 	apiRecord := apiRequest.Records[0]
-	if *internalRecord.PreviousRecordID != *apiRecord.PreviousRecordID ||
-		internalRecord.ConsentProof.Data != apiRecord.ConsentProof.Data ||
-		internalRecord.ConsentProof.ContentType != "text/plain" ||
-		internalRecord.Period.Start != start || internalRecord.Period.End != &end {
-		t.Errorf("wrong conversion of internalRecord. apiRecord: %+v, internalRecord: %+v", apiRecord, internalRecord)
-	}
+
+	assert.Equal(t, *internalRecord.PreviousRecordID, *apiRecord.PreviousRecordID)
+	assert.Equal(t, internalRecord.ConsentProof.Title, apiRecord.ConsentProof.Title)
+	assert.Equal(t, internalRecord.ConsentProof.ID, apiRecord.ConsentProof.ID)
+	assert.Equal(t, *internalRecord.ConsentProof.ContentType, *apiRecord.ConsentProof.ContentType)
+	assert.Equal(t, *internalRecord.ConsentProof.URL, *apiRecord.ConsentProof.URL)
+	assert.Equal(t, *internalRecord.ConsentProof.Hash, *apiRecord.ConsentProof.Hash)
+	assert.Equal(t, start, internalRecord.Period.Start)
+	assert.Equal(t, end, *internalRecord.Period.End)
+
+	assert.Len(t, internalRecord.DataClass, 1)
+	assert.Equal(t, string(internalRecord.DataClass[0]), string(apiRecord.DataClass[0]))
 }
 
 // A matcher to check for successful jobCreateResponse

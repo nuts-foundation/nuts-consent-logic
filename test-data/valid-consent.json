@@ -43,7 +43,10 @@
   ],
   "sourceAttachment": {
     "contentType": "application/pdf",
-    "data": "dhklauHAELrlg78OLg=="
+    "hash": "hash",
+    "id": "id",
+    "title": "title",
+    "url": "https://some.url/reference.pdf"
   },
   "verification": [
     {
@@ -103,8 +106,12 @@
         ],
         "class": [
           {
-            "system": "http://hl7.org/fhir/resource-types",
-            "code": "Observation"
+            "system": "urn:oid:1.3.6.1.4.1.XXXXX.1",
+            "code": "MEDICAL"
+          },
+          {
+            "system": "urn:oid:1.3.6.1.4.1.XXXXX.1",
+            "code": "SOCIAL"
           }
         ]
       }
