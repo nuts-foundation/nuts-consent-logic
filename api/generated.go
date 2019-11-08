@@ -14,13 +14,10 @@ type ActorURI string
 
 // ConsentRecord defines model for ConsentRecord.
 type ConsentRecord struct {
-	ConsentProof struct {
-		// Embedded struct due to allOf(#/components/schemas/EmbeddedData)
-		EmbeddedData
-	} `json:"consentProof"`
-	DataRef          *DataIdentifier `json:"dataRef,omitempty"`
-	Period           Period          `json:"period"`
-	PreviousRecordID *string         `json:"previousRecordID,omitempty"`
+	ConsentProof     DocumentReference    `json:"consentProof"`
+	DataClass        []DataClassification `json:"dataClass"`
+	Period           Period               `json:"period"`
+	PreviousRecordID *string              `json:"previousRecordID,omitempty"`
 }
 
 // CreateConsentRequest defines model for CreateConsentRequest.
@@ -35,16 +32,16 @@ type CreateConsentRequest struct {
 // CustodianURI defines model for CustodianURI.
 type CustodianURI string
 
-// DataIdentifier defines model for DataIdentifier.
-type DataIdentifier struct {
-	DataIdentifier string `json:"dataIdentifier"`
-	EndpointType   string `json:"endpointType"`
-}
+// DataClass defines model for DataClass.
+type DataClassification string
 
-// EmbeddedData defines model for EmbeddedData.
-type EmbeddedData struct {
-	ContentType string `json:"contentType"`
-	Data        string `json:"data"`
+// DocumentReference defines model for DocumentReference.
+type DocumentReference struct {
+	ID          string  `json:"ID"`
+	URL         *string `json:"URL,omitempty"`
+	ContentType *string `json:"contentType,omitempty"`
+	Hash        *string `json:"hash,omitempty"`
+	Title       string  `json:"title"`
 }
 
 // IdentifierURI defines model for IdentifierURI.
@@ -101,3 +98,4 @@ func RegisterHandlers(router runtime.EchoRouter, si ServerInterface) {
 	router.POST("/api/consent", wrapper.CreateOrUpdateConsent)
 
 }
+

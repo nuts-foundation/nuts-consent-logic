@@ -20,8 +20,8 @@ package pkg
 
 import (
 	"encoding/json"
+	"gotest.tools/assert"
 	"io/ioutil"
-	"reflect"
 	"testing"
 	"time"
 )
@@ -37,6 +37,9 @@ func TestCreateFhirConsentResource(t *testing.T) {
 	}
 
 	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.1:00000003")
+	url := "https://some.url/reference.pdf"
+	contentType := "application/pdf"
+	hash := "hash"
 
 	endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
@@ -60,9 +63,16 @@ func TestCreateFhirConsentResource(t *testing.T) {
 							Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
 							End:   &endDate,
 						},
-						ConsentProof: &EmbeddedData{
-							Data:        "dhklauHAELrlg78OLg==",
-							ContentType: "application/pdf",
+						ConsentProof: &DocumentReference{
+							Title:       "title",
+							ID:          "id",
+							URL:         &url,
+							ContentType: &contentType,
+							Hash:        &hash,
+						},
+						DataClass: []IdentifierURI {
+							IdentifierURI("urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL"),
+							IdentifierURI("urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL"),
 						},
 					}},
 					Performer: &performerId,
@@ -88,13 +98,8 @@ func TestCreateFhirConsentResource(t *testing.T) {
 				t.Error(err)
 			}
 
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CreateFhirConsentResource() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(o1, o2) {
-				t.Errorf("CreateFhirConsentResource() = %v, want %v", o2, o1)
-			}
+			assert.Equal(t, tt.wantErr, err != nil)
+			assert.DeepEqual(t, o1, o2)
 		})
 	}
 }

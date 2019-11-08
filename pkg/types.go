@@ -38,14 +38,18 @@ type Record struct {
 	RecordID *string
 	// PreviousRecordID refers to a previous record.
 	PreviousRecordID *string
-	ConsentProof     *EmbeddedData
+	ConsentProof     *DocumentReference
+	DataClass        []IdentifierURI
 	Period           Period
 }
 
-// EmbeddedData defines component schema for EmbeddedData.
-type EmbeddedData struct {
-	ContentType string
-	Data        string
+// DocumentReference defines component schema for DocumentReference.
+type DocumentReference struct {
+	ID          string
+	Title       string
+	ContentType *string
+	URL         *string
+	Hash        *string
 }
 
 // Period defines component schema for Period.

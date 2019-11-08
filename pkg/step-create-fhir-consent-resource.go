@@ -70,8 +70,17 @@ const template = `
   }],
   {{#consentProof}}
   "sourceAttachment": {
+{{#ContentType}}
     "contentType": "{{ContentType}}",
-    "data": "{{Data}}"
+{{/ContentType}}
+{{#URL}}
+    "url": "{{URL}}",
+{{/URL}}
+{{#Hash}}
+    "hash": "{{Hash}}",
+{{/Hash}}
+    "id": "{{ID}}",
+	"title": "{{Title}}"
   },
   {{/consentProof}}
   "verification": [{
@@ -133,10 +142,12 @@ const template = `
           }
         ],
         "class": [
+{{#dataClass}}
           {
-            "system": "http://hl7.org/fhir/resource-types",
-            "code": "Observation"
-          }
+			"system": "{{system}}",
+			"code": "{{code}}"
+          },
+{{/dataClass}}
         ]
       }
     ]
@@ -154,6 +165,7 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 	var actorAgbs []string
 	actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
 
+	dataClasses := make([]map[string]string, len(record.DataClass))
 	viewModel := map[string]interface{}{
 		"subjectBsn":   valueFromUrn(string(subject)),
 		"actorAgbs":    actorAgbs,
@@ -161,7 +173,20 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 		"period": map[string]string{
 			"Start": record.Period.Start.Format(time.RFC3339),
 		},
-		"consentProof": record.ConsentProof,
+		"dataClass": dataClasses,
+	}
+
+	// split data class identifiers
+	for i, dc := range record.DataClass {
+		dataClasses[i] = make(map[string]string)
+		sdc := string(dc)
+		li := strings.LastIndex(sdc, ":")
+		dataClasses[i]["system"] = sdc[0:li]
+		dataClasses[i]["code"] = sdc[li+1:]
+	}
+
+	if record.ConsentProof != nil {
+		viewModel["consentProof"] = derefPointers(record.ConsentProof)
 	}
 
 	if performer != "" {
@@ -188,6 +213,31 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 	res = re.ReplaceAllString(res, `}$1]`)
 
 	return cleanupJSON(res)
+}
+
+func derefPointers(docReference *DocumentReference) map[string]interface{} {
+	m := map[string]interface{}{}
+
+	if docReference == nil {
+		return nil
+	}
+
+	m["Title"] = docReference.Title
+	m["ID"] = docReference.ID
+
+	if docReference.Hash != nil {
+		m["Hash"] = *docReference.Hash
+	}
+
+	if docReference.ContentType != nil {
+		m["ContentType"] = *docReference.ContentType
+	}
+
+	if docReference.URL != nil {
+		m["URL"] = *docReference.URL
+	}
+
+	return m
 }
 
 // clean up the json hash
