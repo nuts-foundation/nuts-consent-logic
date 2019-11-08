@@ -251,6 +251,27 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		}
 	})
 
+	t.Run("A data class can not be empty", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records[0].DataClass = []DataClassification{""}
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "a data class can not be empty", err.(*echo.HTTPError).Message)
+		}
+	})
+
 }
 
 func Test_apiRequest2Internal(t *testing.T) {

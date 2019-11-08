@@ -68,8 +68,14 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		}
 
 		// Validate DataClass
-		if len(record.DataClass) == 0 {
+		if len(record.DataClass) < 1 {
 			return echo.NewHTTPError(http.StatusBadRequest, "the consent record requires at least one data class")
+		}
+
+		for _, dataClass := range record.DataClass {
+			if dataClass == "" {
+				return echo.NewHTTPError(http.StatusBadRequest, "a data class can not be empty")
+			}
 		}
 	}
 
