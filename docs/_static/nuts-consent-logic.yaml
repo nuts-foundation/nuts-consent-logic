@@ -25,7 +25,7 @@ paths:
         If this is the first registration for the triple, a new PatientConsent with ConsentRecords will be created.
         ConsentRecords can be added to a PatientConsent by calling the endpoint again with new records.
         ConsentRecords can be 'updated' by calling the endpoint again with a new record which refers to the PreviousRecordID. The old record gets archived and replaced by the new ConsentRecord.
-        ConsentRecords can be 'deleted' by updating the ConsentRecord with a new Period.End.
+        ConsentRecords can be 'deleted' by updating the ConsentRecord with a new Period.End. For clarity to the network, a valid proof describing why the consent ended must be provided.
 
         During the initiation of a consent-flow, it performs the following steps:
         * Check custodian is in the list of Vendors of this node

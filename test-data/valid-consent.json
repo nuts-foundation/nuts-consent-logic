@@ -1,5 +1,9 @@
 {
   "resourceType": "Consent",
+  "meta": {
+    "versionId": "1",
+    "lastUpdated": "2019-01-01T11:00:00Z"
+  },
   "scope": {
     "coding": [
       {

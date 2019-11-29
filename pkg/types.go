@@ -60,3 +60,13 @@ type Period struct {
 
 // IdentifierURI defines component schema for IdentifierURI.
 type IdentifierURI string
+
+// abstraction of time.Now() for testing
+type nutsTimeI interface {
+	Now() time.Time
+}
+
+type realNutsTime struct{}
+func (realNutsTime) Now() time.Time { return time.Now() }
+
+var nutsTime nutsTimeI = realNutsTime{}

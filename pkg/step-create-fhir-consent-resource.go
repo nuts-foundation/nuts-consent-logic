@@ -29,6 +29,10 @@ import (
 const template = `
 {
   "resourceType": "Consent",
+  "meta": {
+    "versionId": "{{versionId}}",
+    "lastUpdated": "{{lastUpdated}}"
+  },
   "scope": {
     "coding": [
       {
@@ -174,6 +178,8 @@ func CreateFhirConsentResource(custodian, actor, subject, performer IdentifierUR
 			"Start": record.Period.Start.Format(time.RFC3339),
 		},
 		"dataClass": dataClasses,
+		"lastUpdated": nutsTime.Now().Format(time.RFC3339),
+		"versionId": "1",
 	}
 
 	// split data class identifiers
@@ -243,7 +249,9 @@ func derefPointers(docReference *DocumentReference) map[string]interface{} {
 // clean up the json hash
 func cleanupJSON(value string) (string, error) {
 	var parsedValue interface{}
-	json.Unmarshal([]byte(value), &parsedValue)
+	if err := json.Unmarshal([]byte(value), &parsedValue); err != nil {
+		return "", err
+	}
 	cleanValue, err := json.Marshal(parsedValue)
 	if err != nil {
 		return "", err

@@ -100,6 +100,7 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var consentID string
+	var versionID string
 	var records []bridgeClient.ConsentRecord
 	legalEntities := []bridgeClient.Identifier{
 		bridgeClient.Identifier(createConsentRequest.Actor),
@@ -120,6 +121,13 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		}
 		logger().Debug("ConsentId generated")
 	}
+	{
+		if versionID, err = getVersionID(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
+			err = fmt.Errorf("could not determine versionId: %w", err)
+			logger().Error(err)
+			return nil, err
+		}
+	}
 
 	for _, record := range createConsentRequest.Records {
 		var fhirConsent string
@@ -130,19 +138,19 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 				performer = *createConsentRequest.Performer
 			}
 			if fhirConsent, err = CreateFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, performer, record); fhirConsent == "" || err != nil {
-				return nil, errors.New("could not create the FHIR consent resource")
+				return nil, fmt.Errorf("could not create the FHIR consent resource: %w", err)
 			}
 			logger().Debug("FHIR resource created", fhirConsent)
 		}
 		{
 			if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-				return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
+				return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %w", err)
 			}
 			logger().Debug("FHIR resource is valid")
 		}
 		{
 			if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-				return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
+				return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %w", err)
 			}
 			logger().Debug("FHIR resource encrypted")
 		}
@@ -510,6 +518,7 @@ func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event,
 // intermediate struct to keep FHIR resource and hash together
 type FHIRResourceWithHash struct {
 	FHIRResource string
+	// Hash represents the attachment hash (zip of cipherText and metadata) from the distributed event model
 	Hash         string
 }
 

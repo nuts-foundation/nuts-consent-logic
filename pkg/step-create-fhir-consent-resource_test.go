@@ -27,6 +27,13 @@ import (
 )
 
 func TestCreateFhirConsentResource(t *testing.T) {
+	defer resetTestTime()
+	tt, _ := time.Parse(time.RFC3339, "2019-01-01T11:00:00Z")
+
+	nutsTime = testTime{
+		testTime: tt,
+	}
+
 	type args struct {
 		request CreateConsentRequest
 	}
@@ -94,6 +101,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			}
 
 			err = json.Unmarshal([]byte(got), &o2)
+
 			if err != nil {
 				t.Error(err)
 			}
@@ -102,4 +110,15 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			assert.DeepEqual(t, o1, o2)
 		})
 	}
+}
+
+type testTime struct{
+	testTime time.Time
+}
+func (tt testTime) Now() time.Time {
+	return tt.testTime
+}
+
+func resetTestTime() {
+	nutsTime = realNutsTime{}
 }
