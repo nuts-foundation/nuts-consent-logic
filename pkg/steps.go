@@ -47,11 +47,11 @@ func (cl ConsentLogic) getConsentID(request CreateConsentRequest) (string, error
 
 // getVersionID returns the correct version number for the given record. "1" for a new record and "old + 1" for an update
 func (cl ConsentLogic) getVersionID(record Record) (uint, error) {
-	if record.PreviousRecordID == nil {
+	if record.PreviousRecordhash == nil {
 		return 1, nil
 	}
 
-	cr, err := cl.NutsConsentStore.FindConsentRecordByHash(context.TODO(), *record.PreviousRecordID, true)
+	cr, err := cl.NutsConsentStore.FindConsentRecordByHash(context.TODO(), *record.PreviousRecordhash, true)
 	if err != nil {
 		return 0, err
 	}

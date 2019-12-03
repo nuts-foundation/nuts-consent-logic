@@ -51,7 +51,7 @@ func TestConsentLogic_getVersionID(t *testing.T) {
 		h := "hash"
 		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{Version: 1}, nil)
 
-		v, _ := cl.getVersionID(Record{PreviousRecordID: &h})
+		v, _ := cl.getVersionID(Record{PreviousRecordhash: &h})
 		assert.Equal(t, uint(2), v)
 	})
 
@@ -59,7 +59,7 @@ func TestConsentLogic_getVersionID(t *testing.T) {
 		h := "hash"
 		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{}, cStoreTypes.ErrorNotFound)
 
-		_, err := cl.getVersionID(Record{PreviousRecordID: &h})
+		_, err := cl.getVersionID(Record{PreviousRecordhash: &h})
 		if assert.Error(t, err) {
 			assert.True(t, errors.Is(err, cStoreTypes.ErrorNotFound))
 		}
@@ -69,7 +69,7 @@ func TestConsentLogic_getVersionID(t *testing.T) {
 		h := "hash"
 		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{}, cStoreTypes.ErrorConsentRecordNotLatest)
 
-		_, err := cl.getVersionID(Record{PreviousRecordID: &h})
+		_, err := cl.getVersionID(Record{PreviousRecordhash: &h})
 		if assert.Error(t, err) {
 			assert.True(t, errors.Is(err, cStoreTypes.ErrorConsentRecordNotLatest))
 		}

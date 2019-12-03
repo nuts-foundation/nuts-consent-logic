@@ -14,10 +14,10 @@ type ActorURI string
 
 // ConsentRecord defines model for ConsentRecord.
 type ConsentRecord struct {
-	ConsentProof     DocumentReference    `json:"consentProof"`
-	DataClass        []DataClassification `json:"dataClass"`
-	Period           Period               `json:"period"`
-	PreviousRecordID *string              `json:"previousRecordID,omitempty"`
+	ConsentProof       DocumentReference    `json:"consentProof"`
+	DataClass          []DataClassification `json:"dataClass"`
+	Period             Period               `json:"period"`
+	PreviousRecordHash *string              `json:"previousRecordHash,omitempty"`
 }
 
 // CreateConsentRequest defines model for CreateConsentRequest.

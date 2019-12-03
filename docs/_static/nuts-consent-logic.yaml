@@ -159,7 +159,7 @@ components:
       properties:
         consentProof:
           $ref: "#/components/schemas/DocumentReference"
-        previousRecordID:
+        previousRecordHash:
           type: string
           description: |
             Optional parameter. If provided, the previous consentRecord will be replaced by this new ConsentRecord. This is the computed hash of the fhir record.
