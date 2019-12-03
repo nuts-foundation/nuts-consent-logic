@@ -1,4 +1,22 @@
 /*
+ *  Nuts consent logic holds the logic for consent creation
+ *  Copyright (C) 2019 Nuts community
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
+/*
  * This file is part of nuts-consent-logic.
  *
  * nuts-consent-logic is free software: you can redistribute it and/or modify
@@ -20,6 +38,10 @@ package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
@@ -34,9 +56,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
-	"time"
 
 	"github.com/nuts-foundation/nuts-go-core/mock"
 )
@@ -58,14 +77,14 @@ func jsonRequest() CreateConsentRequest {
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "proof", ID: "1"},
-				DataClass:    []DataClassification {
+				DataClass: []DataClassification{
 					"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
 				},
 			},
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "other.proof", ID: "2"},
-				DataClass:    []DataClassification {
+				DataClass: []DataClassification{
 					"urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL",
 				},
 			},
@@ -88,7 +107,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
 		publicKey := "123"
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
-		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
+		cryptoMock.EXPECT().PublicKeyInPEM(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
 		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
