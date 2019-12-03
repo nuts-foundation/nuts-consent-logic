@@ -32,7 +32,7 @@ type CreateConsentRequest struct {
 // CustodianURI defines model for CustodianURI.
 type CustodianURI string
 
-// DataClass defines model for DataClass.
+// DataClassification defines model for DataClassification.
 type DataClassification string
 
 // DocumentReference defines model for DocumentReference.

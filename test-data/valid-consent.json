@@ -110,11 +110,11 @@
         ],
         "class": [
           {
-            "system": "urn:oid:1.3.6.1.4.1.XXXXX.1",
+            "system": "urn:oid:1.3.6.1.4.1.54851.1",
             "code": "MEDICAL"
           },
           {
-            "system": "urn:oid:1.3.6.1.4.1.XXXXX.1",
+            "system": "urn:oid:1.3.6.1.4.1.54851.1",
             "code": "SOCIAL"
           }
         ]

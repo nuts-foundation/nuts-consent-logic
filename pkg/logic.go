@@ -119,7 +119,6 @@ func (cl ConsentLogic) StartConsentFlow(createConsentRequest *CreateConsentReque
 func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest *CreateConsentRequest) (*events.Event, error) {
 	var err error
 	var consentID string
-	var versionID string
 	var records []bridgeClient.ConsentRecord
 	legalEntities := []bridgeClient.Identifier{
 		bridgeClient.Identifier(createConsentRequest.Actor),
@@ -141,11 +140,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		logger().Debug("ConsentId generated")
 	}
 	{
-		if versionID, err = cl.getVersionID(*createConsentRequest); versionID == "" || err != nil {
-			err = fmt.Errorf("could not determine versionId: %w", err)
-			logger().Error(err)
-			return nil, err
-		}
+
 	}
 
 	for _, record := range createConsentRequest.Records {

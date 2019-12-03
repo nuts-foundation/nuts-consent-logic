@@ -149,7 +149,7 @@ components:
     DataClassification:
       type: string
       description: 'Nuts classification system identifier'
-      example: 'urn:oid:1.3.6.1.4.1.XXXXX.1.1:MEDICAL'
+      example: 'urn:oid:1.3.6.1.4.1.54851.1:MEDICAL'
     ConsentRecord:
       type: object
       required:
@@ -162,7 +162,7 @@ components:
         previousRecordID:
           type: string
           description: |
-            Optional parameter. If provided, the previous consentRecord will be replaced by this new ConsentRecord.
+            Optional parameter. If provided, the previous consentRecord will be replaced by this new ConsentRecord. This is the computed hash of the fhir record.
         period:
           $ref: "#/components/schemas/Period"
         dataClass:

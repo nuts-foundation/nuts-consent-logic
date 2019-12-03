@@ -19,19 +19,62 @@
 package pkg
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	cStoreMock "github.com/nuts-foundation/nuts-consent-store/mock"
+	cStoreTypes "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
-	"gotest.tools/assert"
+	"github.com/stretchr/testify/assert"
 )
+
+func TestConsentLogic_getVersionID(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	cStore := cStoreMock.NewMockConsentStoreClient(ctrl)
+	cl := ConsentLogic{NutsConsentStore: cStore}
+
+	t.Run("version for new record equals 1", func(t *testing.T) {
+		v, _ := cl.getVersionID(Record{})
+		assert.Equal(t, uint(1), v)
+	})
+
+	t.Run("version for updated record equals +1", func(t *testing.T) {
+		h := "hash"
+		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{Version: 1}, nil)
+
+		v, _ := cl.getVersionID(Record{PreviousRecordID: &h})
+		assert.Equal(t, uint(2), v)
+	})
+
+	t.Run("version for unknown record returns error", func(t *testing.T) {
+		h := "hash"
+		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{}, cStoreTypes.ErrorNotFound)
+
+		_, err := cl.getVersionID(Record{PreviousRecordID: &h})
+		if assert.Error(t, err) {
+			assert.True(t, errors.Is(err, cStoreTypes.ErrorNotFound))
+		}
+	})
+
+	t.Run("version for not-latest record returns error", func(t *testing.T) {
+		h := "hash"
+		cStore.EXPECT().FindConsentRecordByHash(context.TODO(), h, true).Return(cStoreTypes.ConsentRecord{}, cStoreTypes.ErrorConsentRecordNotLatest)
+
+		_, err := cl.getVersionID(Record{PreviousRecordID: &h})
+		if assert.Error(t, err) {
+			assert.True(t, errors.Is(err, cStoreTypes.ErrorConsentRecordNotLatest))
+		}
+	})
+}
 
 func TestCreateFhirConsentResource(t *testing.T) {
 	defer resetTestTime()
@@ -85,8 +128,8 @@ func TestCreateFhirConsentResource(t *testing.T) {
 							Hash:        &hash,
 						},
 						DataClass: []IdentifierURI{
-							IdentifierURI("urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL"),
-							IdentifierURI("urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL"),
+							IdentifierURI("urn:oid:1.3.6.1.4.1.54851.1:MEDICAL"),
+							IdentifierURI("urn:oid:1.3.6.1.4.1.54851.1:SOCIAL"),
 						},
 					}},
 					Performer: &performerId,
@@ -114,7 +157,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.wantErr, err != nil)
-			assert.DeepEqual(t, o1, o2)
+			assert.Equal(t, o1, o2)
 		})
 	}
 }

@@ -78,20 +78,20 @@ func jsonRequest() CreateConsentRequest {
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "proof", ID: "1"},
 				DataClass: []DataClassification{
-					"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+					"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
 				},
 			},
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "other.proof", ID: "2"},
 				DataClass: []DataClassification{
-					"urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL",
+					"urn:oid:1.3.6.1.4.1.54851.1:SOCIAL",
 				},
 			},
 		},
-		Actor:     ActorURI("agb:00000001"),
-		Custodian: CustodianURI("agb:00000007"),
-		Subject:   SubjectURI("bsn:99999990"),
+		Actor:     "agb:00000001",
+		Custodian: "agb:00000007",
+		Subject:   "bsn:99999990",
 		Performer: &performer,
 	}
 
@@ -125,11 +125,8 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 
 		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
-		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
+		assert.NoError(t, apiWrapper.CreateOrUpdateConsent(echoServer))
 	})
 	t.Run("It handles an empty request body", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -317,7 +314,7 @@ func Test_apiRequest2Internal(t *testing.T) {
 				Hash:        &hash,
 			},
 			DataClass: []DataClassification{
-				"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+				"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
 			},
 			PreviousRecordID: &previousId,
 			Period: Period{

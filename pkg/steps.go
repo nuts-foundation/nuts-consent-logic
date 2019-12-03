@@ -19,6 +19,7 @@
 package pkg
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -45,8 +46,17 @@ func (cl ConsentLogic) getConsentID(request CreateConsentRequest) (string, error
 }
 
 // getVersionID returns the correct version number for the given record. "1" for a new record and "old + 1" for an update
-func (cl ConsentLogic) getVersionID(request CreateConsentRequest) (string, error) {
-	return "1", nil
+func (cl ConsentLogic) getVersionID(record Record) (uint, error) {
+	if record.PreviousRecordID == nil {
+		return 1, nil
+	}
+
+	cr, err := cl.NutsConsentStore.FindConsentRecordByHash(context.TODO(), *record.PreviousRecordID, true)
+	if err != nil {
+		return 0, err
+	}
+
+	return cr.Version + 1, nil
 }
 
 // custodianIsKnown checks if the custodian from the request is managed by this node.
@@ -103,8 +113,19 @@ func valueFromUrn(urn string) string {
 
 func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, performer IdentifierURI, record Record) (string, error) {
 
-	var actorAgbs []string
+	var (
+		actorAgbs []string
+		err       error
+		versionID uint
+		res       string
+	)
 	actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
+
+	if versionID, err = cl.getVersionID(record); versionID == 0 || err != nil {
+		err = fmt.Errorf("could not determine versionId: %w", err)
+		logger().Error(err)
+		return "", err
+	}
 
 	dataClasses := make([]map[string]string, len(record.DataClass))
 	viewModel := map[string]interface{}{
@@ -116,7 +137,7 @@ func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, perf
 		},
 		"dataClass":   dataClasses,
 		"lastUpdated": nutsTime.Now().Format(time.RFC3339),
-		"versionId":   "1",
+		"versionId":   fmt.Sprintf("%d", versionID),
 	}
 
 	// split data class identifiers
@@ -141,10 +162,6 @@ func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, perf
 		(viewModel["period"].(map[string]string))["End"] = periodEnd.Format(time.RFC3339)
 	}
 
-	var (
-		res string
-		err error
-	)
 	if res, err = mustache.Render(template, viewModel); err != nil {
 		// uh oh
 		return "", err
