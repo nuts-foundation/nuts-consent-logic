@@ -1,19 +1,19 @@
 /*
- * This file is part of nuts-consent-logic.
+ *  Nuts consent logic holds the logic for consent creation
+ *  Copyright (C) 2019 Nuts community
  *
- * nuts-consent-logic is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- * nuts-consent-logic is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with nuts-consent-logic.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package pkg
@@ -28,6 +28,10 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"io/ioutil"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
 	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
@@ -41,9 +45,6 @@ import (
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
-	"io/ioutil"
-	"testing"
-	"time"
 )
 
 func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
@@ -226,7 +227,7 @@ kQIDAQAB
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000001"})
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000001"})
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
@@ -250,7 +251,7 @@ kQIDAQAB
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"})
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000002"})
 		defer ctrl.Finish()
 		foo := "foo"
 		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
@@ -297,7 +298,7 @@ kQIDAQAB
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		// 00000002 is managed by this node
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:agb:00000002"}).Return("public key of urn:agb:00000002", nil)
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000002"}).Return("public key of urn:agb:00000002", nil)
 
 		// expect to receive a decrypt call for 00000002
 		validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
@@ -400,9 +401,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -417,9 +418,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -433,9 +434,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("key of 1", nil)
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("key of 1", nil)
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", errors.New("could not load key"))
+		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -456,7 +457,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
-	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: legalEntity}).AnyTimes().Return("key of 1", nil)
+	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: legalEntity}).AnyTimes().Return("key of 1", nil)
 	cryptoMock.EXPECT().SignFor(hexEncodedHash, gomock.Eq(types.LegalEntity{URI: legalEntity})).Return([]byte("signedBytes"), nil)
 
 	// prepare method parameter
@@ -548,8 +549,8 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
-	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return("key of 0", nil)
-	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return("", nil)
+	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return("key of 0", nil)
+	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return("", nil)
 
 	validConsent, err := ioutil.ReadFile("../test-data/fhir-consent.json")
 	if err != nil {
@@ -609,7 +610,7 @@ kQIDAQAB
 	custodianAGB := "urn:agb:00000001"
 	actorAGB := "urn:agb:00000002"
 
-	cryptoMock.EXPECT().PublicKey(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return("key", nil)
+	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return("key", nil)
 	cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
 	cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
 	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(&db.Organization{PublicKey: &validPublicKey}, nil)

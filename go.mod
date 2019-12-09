@@ -14,13 +14,13 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/labstack/echo/v4 v4.1.11
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
-	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191014143304-10ea721a4c18
-	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191015073411-949b9210b40c
-	github.com/nuts-foundation/nuts-crypto v0.0.0-20191015112225-206a68fc8f33
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029140651-5bd15f509d70
-	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20191015073030-4e51e525296c
+	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191029143036-2633209a32e4
+	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191203141943-57b769643dc2
+	github.com/nuts-foundation/nuts-crypto v0.0.0-20191128090623-5ba9490632bb
+	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029153434-8e47d64e4f2b
+	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20191203114751-5322dfe1d71d
 	github.com/nuts-foundation/nuts-go-core v0.0.0-20191028170600-66675906a53a
-	github.com/nuts-foundation/nuts-registry v0.0.0-20191016145829-6bcaa08ad25d
+	github.com/nuts-foundation/nuts-registry v0.0.0-20191128091042-807cfaf67305
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.4.2

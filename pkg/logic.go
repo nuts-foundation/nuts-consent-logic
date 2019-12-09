@@ -1,19 +1,19 @@
 /*
- * This file is part of nuts-consent-logic.
+ *  Nuts consent logic holds the logic for consent creation
+ *  Copyright (C) 2019 Nuts community
  *
- * nuts-consent-logic is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- * nuts-consent-logic is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with nuts-consent-logic.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package pkg
@@ -26,6 +26,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"reflect"
+	"sync"
+
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
@@ -39,8 +42,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/thedevsaddam/gojsonq.v2"
-	"reflect"
-	"sync"
 )
 
 type ConsentLogicConfig struct {
@@ -107,18 +108,21 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	}
 
 	{
-		if res, err := CustodianIsKnown(cl.NutsCrypto, *createConsentRequest); !res || err != nil {
+		if res, err := cl.custodianIsKnown(*createConsentRequest); !res || err != nil {
 			return nil, errors.New("custodian is not a known vendor")
 		}
 		logger().Debug("Custodian is known")
 	}
 	{
-		if consentID, err = GetConsentId(cl.NutsCrypto, *createConsentRequest); consentID == "" || err != nil {
+		if consentID, err = cl.getConsentID(*createConsentRequest); consentID == "" || err != nil {
 			fmt.Println(err)
 			// todo: report back the reason why the consentID could not be generated. Probably because the custodian is not managed by this node?
 			return nil, errors.New("could not create the consentID for this combination of subject, actor and custodian")
 		}
 		logger().Debug("ConsentId generated")
+	}
+	{
+
 	}
 
 	for _, record := range createConsentRequest.Records {
@@ -129,20 +133,20 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 			if createConsentRequest.Performer != nil {
 				performer = *createConsentRequest.Performer
 			}
-			if fhirConsent, err = CreateFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, performer, record); fhirConsent == "" || err != nil {
-				return nil, errors.New("could not create the FHIR consent resource")
+			if fhirConsent, err = cl.createFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, performer, record); fhirConsent == "" || err != nil {
+				return nil, fmt.Errorf("could not create the FHIR consent resource: %w", err)
 			}
 			logger().Debug("FHIR resource created", fhirConsent)
 		}
 		{
-			if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-				return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %v", err)
+			if validationResult, err := cl.validateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+				return nil, fmt.Errorf("the generated FHIR consent resource is invalid: %w", err)
 			}
 			logger().Debug("FHIR resource is valid")
 		}
 		{
-			if encryptedConsent, err = EncryptFhirConsent(cl.NutsRegistry, cl.NutsCrypto, fhirConsent, *createConsentRequest); err != nil {
-				return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %v", err)
+			if encryptedConsent, err = cl.encryptFhirConsent(fhirConsent, *createConsentRequest); err != nil {
+				return nil, fmt.Errorf("could not encrypt consent resource for all involved parties: %w", err)
 			}
 			logger().Debug("FHIR resource encrypted")
 		}
@@ -160,7 +164,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 				Alg: "AES_GCM", //todo: fix hardcoded alg
 				Iv:  base64.StdEncoding.EncodeToString(encryptedConsent.Nonce),
 			},
-			PreviousAttachmentHash: record.PreviousRecordID,
+			PreviousAttachmentHash: record.PreviousRecordhash,
 			ConsentRecordHash:      consentRecordHash,
 		}
 
@@ -320,7 +324,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 		// validate consent record
 		// =======================
-		if validationResult, err := ValidateFhirConsentResource(fhirConsent); !validationResult || err != nil {
+		if validationResult, err := cl.validateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 			errorDescription := "Consent record invalid"
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
@@ -379,7 +383,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		consentRecordHash := *cr.AttachmentHash
 		logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
-		pubKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+		pubKey, err := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
 		if err != nil {
 			logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
 			return nil, err
@@ -483,7 +487,7 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures *[]bridgeClient.Party
 		// ... check if it has already signed the request
 		if !attSignatures[string(ent)] {
 			// if not, if this node manages the public key, than it is our identity.
-			key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(ent)})
+			key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: string(ent)})
 			if len(key) != 0 {
 				// yes, so lets add it to the missingSignatures so we can sign it in the next step
 				logger().Debugf("found first entity to sign for: %v", ent)
@@ -510,7 +514,8 @@ func (cl ConsentLogic) autoAckConsentRequest(event events.Event) (*events.Event,
 // intermediate struct to keep FHIR resource and hash together
 type FHIRResourceWithHash struct {
 	FHIRResource string
-	Hash         string
+	// Hash represents the attachment hash (zip of cipherText and metadata) from the distributed event model
+	Hash string
 }
 
 // HandleEventConsentDistributed handles EventConsentDistributed.
@@ -532,7 +537,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
-			publicKey, err := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)})
+			publicKey, err := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)})
 			if err != nil || publicKey == "" {
 				// this organisation is not managed by this node, try with next
 				continue
@@ -583,11 +588,11 @@ func hashFHIRConsent(fhirConsent string) string {
 // only consent records of which or the custodian or the actor is managed by this node should be stored
 func (cl ConsentLogic) isRelevantForThisNode(patientConsent cStore.PatientConsent) bool {
 	// add if custodian is managed by this node
-	if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: patientConsent.Custodian}); key != "" {
+	if key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: patientConsent.Custodian}); key != "" {
 		return true
 	}
 	// or if the actor is managed by this node
-	if key, _ := cl.NutsCrypto.PublicKey(cryptoTypes.LegalEntity{URI: patientConsent.Actor}); key != "" {
+	if key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: patientConsent.Actor}); key != "" {
 		return true
 	}
 	return false

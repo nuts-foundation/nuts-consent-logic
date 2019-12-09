@@ -1,25 +1,29 @@
 /*
- * This file is part of nuts-consent-logic.
+ *  Nuts consent logic holds the logic for consent creation
+ *  Copyright (C) 2019 Nuts community
  *
- * nuts-consent-logic is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
  *
- * nuts-consent-logic is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
  *
- * You should have received a copy of the GNU General Public License
- * along with nuts-consent-logic.  If not, see <http://www.gnu.org/licenses/>.
- *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
 package api
 
 import (
 	"encoding/json"
+	"net/http"
+	"testing"
+	"time"
+
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
@@ -34,9 +38,6 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
-	"time"
 
 	"github.com/nuts-foundation/nuts-go-core/mock"
 )
@@ -58,21 +59,21 @@ func jsonRequest() CreateConsentRequest {
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "proof", ID: "1"},
-				DataClass:    []DataClassification {
-					"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+				DataClass: []DataClassification{
+					"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
 				},
 			},
 			{
 				Period:       Period{Start: time.Now(), End: &endDate},
 				ConsentProof: DocumentReference{Title: "other.proof", ID: "2"},
-				DataClass:    []DataClassification {
-					"urn:oid:1.3.6.1.4.1.XXXXX.1:SOCIAL",
+				DataClass: []DataClassification{
+					"urn:oid:1.3.6.1.4.1.54851.1:SOCIAL",
 				},
 			},
 		},
-		Actor:     ActorURI("agb:00000001"),
-		Custodian: CustodianURI("agb:00000007"),
-		Subject:   SubjectURI("bsn:99999990"),
+		Actor:     "agb:00000001",
+		Custodian: "agb:00000007",
+		Subject:   "bsn:99999990",
 		Performer: &performer,
 	}
 
@@ -88,7 +89,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
 		publicKey := "123"
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
-		cryptoMock.EXPECT().PublicKey(gomock.Any()).Return(publicKey, nil).AnyTimes()
+		cryptoMock.EXPECT().PublicKeyInPEM(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
 		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
@@ -106,11 +107,8 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		// setup response expectation
 
 		echoServer.EXPECT().JSON(http.StatusAccepted, JobCreatedResponseMatcher{})
-		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 
-		if err != nil {
-			t.Errorf("Expected no error, got %v", err)
-		}
+		assert.NoError(t, apiWrapper.CreateOrUpdateConsent(echoServer))
 	})
 	t.Run("It handles an empty request body", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
@@ -298,9 +296,9 @@ func Test_apiRequest2Internal(t *testing.T) {
 				Hash:        &hash,
 			},
 			DataClass: []DataClassification{
-				"urn:oid:1.3.6.1.4.1.XXXXX.1:MEDICAL",
+				"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
 			},
-			PreviousRecordID: &previousId,
+			PreviousRecordHash: &previousId,
 			Period: Period{
 				End:   &end,
 				Start: start,
@@ -318,7 +316,7 @@ func Test_apiRequest2Internal(t *testing.T) {
 	internalRecord := internal.Records[0]
 	apiRecord := apiRequest.Records[0]
 
-	assert.Equal(t, *internalRecord.PreviousRecordID, *apiRecord.PreviousRecordID)
+	assert.Equal(t, *internalRecord.PreviousRecordhash, *apiRecord.PreviousRecordHash)
 	assert.Equal(t, internalRecord.ConsentProof.Title, apiRecord.ConsentProof.Title)
 	assert.Equal(t, internalRecord.ConsentProof.ID, apiRecord.ConsentProof.ID)
 	assert.Equal(t, *internalRecord.ConsentProof.ContentType, *apiRecord.ConsentProof.ContentType)
