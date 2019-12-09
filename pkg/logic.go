@@ -608,9 +608,9 @@ func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsents []FHIRResourceWith
 		patientConsent.Actor = string(pkg2.ActorsFrom(fhirConsent)[0])
 		patientConsent.Custodian = pkg2.CustodianFrom(fhirConsent)
 		patientConsent.Subject = pkg2.SubjectFrom(fhirConsent)
-		resources := cStore.ResourcesFromStrings(pkg2.ResourcesFrom(fhirConsent))
+		dataClasses := cStore.DataClassesFromStrings(pkg2.ResourcesFrom(fhirConsent))
 		period := pkg2.PeriodFrom(fhirConsent)
-		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{Resources: resources, ValidFrom: period[0], ValidTo: period[1], Hash: consent.Hash})
+		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{DataClasses: dataClasses, ValidFrom: period[0], ValidTo: period[1], Hash: consent.Hash})
 	}
 
 	return patientConsent
