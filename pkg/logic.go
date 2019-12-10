@@ -516,6 +516,8 @@ type FHIRResourceWithHash struct {
 	FHIRResource string
 	// Hash represents the attachment hash (zip of cipherText and metadata) from the distributed event model
 	Hash string
+	// PreviousHash represents the previous attachment hash from the distributed event model (in the case of updates)
+	PreviousHash *string
 }
 
 // HandleEventConsentDistributed handles EventConsentDistributed.
@@ -550,6 +552,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 			}
 			fhirConsents = append(fhirConsents, FHIRResourceWithHash{
 				Hash:         *cr.AttachmentHash,
+				PreviousHash: cr.Metadata.PreviousAttachmentHash,
 				FHIRResource: fhirConsentString,
 			})
 		}
@@ -610,7 +613,7 @@ func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsents []FHIRResourceWith
 		patientConsent.Subject = pkg2.SubjectFrom(fhirConsent)
 		dataClasses := cStore.DataClassesFromStrings(pkg2.ResourcesFrom(fhirConsent))
 		period := pkg2.PeriodFrom(fhirConsent)
-		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{DataClasses: dataClasses, ValidFrom: period[0], ValidTo: period[1], Hash: consent.Hash})
+		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{DataClasses: dataClasses, ValidFrom: period[0], ValidTo: period[1], Hash: consent.Hash, PreviousHash: consent.PreviousHash})
 	}
 
 	return patientConsent
