@@ -124,7 +124,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		}
 	})
 
-	t.Run("It handles an a missing subject", func(t *testing.T) {
+	t.Run("It handles a missing subject", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -144,7 +144,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 			assert.Equal(t, "the consent requires a subject", err.(*echo.HTTPError).Message)
 		}
 	})
-	t.Run("It handles an a missing actor", func(t *testing.T) {
+	t.Run("It handles a missing actor", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -267,6 +267,27 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		err := apiWrapper.CreateOrUpdateConsent(echoServer)
 		if assert.Error(t, err) {
 			assert.Equal(t, "a data class can not be empty", err.(*echo.HTTPError).Message)
+		}
+	})
+
+	t.Run("A data class can not have the incorrect format", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		apiWrapper := Wrapper{}
+		echoServer := mock.NewMockContext(ctrl)
+
+		jsonRequest := jsonRequest()
+		jsonRequest.Records[0].DataClass = []DataClassification{"some classification"}
+		jsonData, _ := json.Marshal(jsonRequest)
+
+		echoServer.EXPECT().Bind(gomock.Any()).Do(func(f interface{}) {
+			_ = json.Unmarshal(jsonData, f)
+		})
+
+		err := apiWrapper.CreateOrUpdateConsent(echoServer)
+		if assert.Error(t, err) {
+			assert.Equal(t, "a data class must start with urn:oid:1.3.6.1.4.1.54851.1:", err.(*echo.HTTPError).Message)
 		}
 	})
 
