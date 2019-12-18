@@ -511,7 +511,8 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
-	consentWithHash := FHIRResourceWithHash{FHIRResource: string(validConsent), Hash: "123"}
+	prev := "122"
+	consentWithHash := FHIRResourceWithHash{FHIRResource: string(validConsent), Hash: "123", PreviousHash: &prev}
 	if err != nil {
 		t.Error(err)
 	}
@@ -523,19 +524,13 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
 	subject := "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
 
-	if patientConsent.Custodian != expectedCustodian {
-		t.Errorf("expected custodian with id: %s, got %s instead", expectedCustodian, patientConsent.Custodian)
-	}
-	if patientConsent.Actor != actor {
-		t.Errorf("expected actor with id: %s, got %s instead", actor, patientConsent.Actor)
-	}
-	if patientConsent.Subject != subject {
-		t.Errorf("expected subject with bsn: %s, got %s instead", subject, patientConsent.Subject)
-	}
-	if len(patientConsent.Records) != 1 {
-		t.Errorf("expected 1 record, got %d instedad", len(patientConsent.Records))
-	}
+	assert.Equal(t, expectedCustodian, patientConsent.Custodian)
+	assert.Equal(t, actor, patientConsent.Actor)
+	assert.Equal(t, subject, patientConsent.Subject)
+	assert.Len(t, patientConsent.Records, 1)
+
 	record := patientConsent.Records[0]
+	assert.Equal(t, prev, *record.PreviousHash)
 	// "start": "2019-01-01T11:00:00Z",
 	// "end": "2019-07-01T11:00:00Z"
 	if record.ValidFrom.Month() != 1 || record.ValidTo.Month() != 7 {
