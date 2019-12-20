@@ -81,7 +81,7 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 				return echo.NewHTTPError(http.StatusBadRequest, "a data class can not be empty")
 			}
 			expr := fmt.Sprintf("urn:oid:%s:", core.NutsConsentClassesOID)
-			if strings.Index(string(dataClass), expr) == -1 {
+			if !strings.Contains(string(dataClass), expr) {
 				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("a data class must start with %s", expr))
 			}
 		}
