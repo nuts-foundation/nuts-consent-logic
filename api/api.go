@@ -19,11 +19,14 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
+	core "github.com/nuts-foundation/nuts-go-core"
 )
 
 // Wrapper provides the implementation of the generated ServerInterface
@@ -76,6 +79,10 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		for _, dataClass := range record.DataClass {
 			if dataClass == "" {
 				return echo.NewHTTPError(http.StatusBadRequest, "a data class can not be empty")
+			}
+			expr := fmt.Sprintf("urn:oid:%s:", core.NutsConsentClassesOID)
+			if !strings.Contains(string(dataClass), expr) {
+				return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("a data class must start with %s", expr))
 			}
 		}
 	}
