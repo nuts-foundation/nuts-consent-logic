@@ -15,10 +15,10 @@ require (
 	github.com/labstack/echo/v4 v4.1.11
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20191029143036-2633209a32e4
-	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191209125047-12d4b6a0e826
+	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191220084624-9ef684a1b27e
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20191128090623-5ba9490632bb
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029153434-8e47d64e4f2b
-	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20191203114751-5322dfe1d71d
+	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200108104034-2a3b8cc778c3
 	github.com/nuts-foundation/nuts-go-core v0.0.0-20191218133145-27ebcf628fab
 	github.com/nuts-foundation/nuts-registry v0.0.0-20191209153959-67dd0910b057
 	github.com/prometheus/procfs v0.0.5 // indirect

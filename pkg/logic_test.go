@@ -560,7 +560,7 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
 		Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-		Records:   []pkg3.ConsentRecord{{DataClasses: []pkg3.DataClass{{ConsentRecordID: 0, Code: "Observation"}}, ValidFrom: start, ValidTo: end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
+		Records:   []pkg3.ConsentRecord{{DataClasses: []pkg3.DataClass{{ConsentRecordID: 0, Code: "http://hl7.org/fhir/resource-types#Observation"}}, ValidFrom: start, ValidTo: &end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
 	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)

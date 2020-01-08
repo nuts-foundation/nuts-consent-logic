@@ -613,7 +613,7 @@ func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsents []FHIRResourceWith
 		patientConsent.Subject = pkg2.SubjectFrom(fhirConsent)
 		dataClasses := cStore.DataClassesFromStrings(pkg2.ResourcesFrom(fhirConsent))
 		period := pkg2.PeriodFrom(fhirConsent)
-		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{DataClasses: dataClasses, ValidFrom: period[0], ValidTo: period[1], Hash: consent.Hash, PreviousHash: consent.PreviousHash})
+		patientConsent.Records = append(patientConsent.Records, cStore.ConsentRecord{DataClasses: dataClasses, ValidFrom: *period[0], ValidTo: period[1], Hash: consent.Hash, PreviousHash: consent.PreviousHash})
 	}
 
 	return patientConsent
