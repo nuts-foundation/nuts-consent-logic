@@ -18,7 +18,7 @@ require (
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20191220084624-9ef684a1b27e
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20191128090623-5ba9490632bb
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029153434-8e47d64e4f2b
-	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200108104034-2a3b8cc778c3
+	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200106133706-43690c029d3d
 	github.com/nuts-foundation/nuts-go-core v0.0.0-20191218133145-27ebcf628fab
 	github.com/nuts-foundation/nuts-registry v0.0.0-20191209153959-67dd0910b057
 	github.com/prometheus/procfs v0.0.5 // indirect
