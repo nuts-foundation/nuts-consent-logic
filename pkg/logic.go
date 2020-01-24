@@ -108,7 +108,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	}
 
 	{
-		if res, err := cl.custodianIsKnown(*createConsentRequest); !res || err != nil {
+		if !cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(createConsentRequest.Custodian)}) {
 			return nil, errors.New("custodian is not a known vendor")
 		}
 		logger().Debug("Custodian is known")
@@ -258,25 +258,19 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					}
 
 					// Check if the signatures public key equals the published key
-					// TODO: This uses a single public key per legalEntity. When key rotation comes into play, fix this
 					// Fixme: this error handling should be rewritten
-					pKeyFromRegistry, err := crypto.PemToPublicKey([]byte(*legalEntity.PublicKey))
+					jwkFromReg, err := legalEntity.CurrentPublicKey()
 					if err != nil {
-						errorMsg := fmt.Sprintf("Could not parse public key from registry: %s", err)
+						errorMsg := fmt.Sprintf("Could not get public key from registry: %w", err)
 						logger().Warn(errorMsg)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
 					}
-					pKeyFromSignature, err := crypto.PemToPublicKey([]byte(signature.Signature.PublicKey))
-					if err != nil {
-						errorMsg := fmt.Sprintf("Could not parse public key from signature: %s", err)
-						logger().Warn(errorMsg)
-						event.Error = &errorMsg
-						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
-						return
-					}
-					if !reflect.DeepEqual(pKeyFromRegistry, pKeyFromSignature) {
+
+					jwkFromSig, err := crypto.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
+
+					if !reflect.DeepEqual(jwkFromReg, jwkFromSig) {
 						errorMsg := fmt.Sprintf("Publickey of organization %s does not match with signatures publickey", legalEntityID)
 						logger().Debug(errorMsg)
 						logger().Debugf("publicKey from registry: %s ", *legalEntity.PublicKey)
@@ -383,9 +377,15 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		consentRecordHash := *cr.AttachmentHash
 		logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
-		pubKey, err := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+		pubKey, err := cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
 		if err != nil {
 			logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
+			return nil, err
+		}
+
+		jwk, err := crypto.JwkToMap(pubKey)
+		if err != nil {
+			logger().Errorf("Error in transforming pubKey for %s: %w", legalEntityToSignFor, err)
 			return nil, err
 		}
 		hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
@@ -406,7 +406,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 			LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
 			Signature: bridgeClient.SignatureWithKey{
 				Data:      encodedSignatureBytes,
-				PublicKey: pubKey,
+				PublicKey: bridgeClient.JWK{AdditionalProperties: jwk},
 			},
 		}
 
@@ -486,9 +486,8 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures *[]bridgeClient.Party
 	for _, ent := range identifiers {
 		// ... check if it has already signed the request
 		if !attSignatures[string(ent)] {
-			// if not, if this node manages the public key, than it is our identity.
-			key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: string(ent)})
-			if len(key) != 0 {
+			// if not, check if this node has any keys
+			if cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(ent)}) {
 				// yes, so lets add it to the missingSignatures so we can sign it in the next step
 				logger().Debugf("found first entity to sign for: %v", ent)
 				return string(ent)
@@ -539,8 +538,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
-			publicKey, err := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)})
-			if err != nil || publicKey == "" {
+			if !cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)}) {
 				// this organisation is not managed by this node, try with next
 				continue
 			}
@@ -591,14 +589,8 @@ func hashFHIRConsent(fhirConsent string) string {
 // only consent records of which or the custodian or the actor is managed by this node should be stored
 func (cl ConsentLogic) isRelevantForThisNode(patientConsent cStore.PatientConsent) bool {
 	// add if custodian is managed by this node
-	if key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: patientConsent.Custodian}); key != "" {
-		return true
-	}
-	// or if the actor is managed by this node
-	if key, _ := cl.NutsCrypto.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: patientConsent.Actor}); key != "" {
-		return true
-	}
-	return false
+	return cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: patientConsent.Custodian}) ||
+		cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: patientConsent.Actor})
 }
 
 // PatientConsentFromFHIRRecord extracts the PatientConsent from a FHIR consent record encoded as json string.

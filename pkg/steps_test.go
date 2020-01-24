@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/lestrrat-go/jwx/jwa"
 	cStoreMock "github.com/nuts-foundation/nuts-consent-store/mock"
 	cStoreTypes "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
@@ -173,7 +174,9 @@ func TestEncryptFhirConsent(t *testing.T) {
 
 	cryptoClient := crypto.NewCryptoClient()
 	_ = cryptoClient.GenerateKeyPairFor(cryptoTypes.LegalEntity{URI: custodianID})
-	publicKey, _ := cryptoClient.PublicKeyInPEM(cryptoTypes.LegalEntity{URI: custodianID})
+	publicKey, _ := cryptoClient.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: custodianID})
+	jwkMap, _ := crypto.JwkToMap(publicKey)
+	jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
 
 	t.Run("it should encrypt the consent resource", func(tt *testing.T) {
 		ctrl := gomock.NewController(tt)
@@ -183,7 +186,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			NutsRegistry: registryClient,
 		}
 		defer ctrl.Finish()
-		registryClient.EXPECT().OrganizationById(gomock.Eq(partyID)).Return(&db.Organization{PublicKey: &publicKey}, nil)
+		registryClient.EXPECT().OrganizationById(gomock.Eq(partyID)).Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil)
 
 		request := CreateConsentRequest{
 			Actor:     IdentifierURI(partyID),
