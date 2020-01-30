@@ -27,12 +27,12 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
-	"errors"
 	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
 	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
 	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
@@ -68,22 +68,20 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 	})
 
 	t.Run("testing public keys", func(t *testing.T) {
-		validPublicKey := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh
-8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
-iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
-0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
-aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
-rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
-kQIDAQAB
------END PUBLIC KEY-----`
+		validPublicKey := `{
+    "kty": "RSA",
+    "n": "uKjoosQFSAYCS-QQGVBh8N-GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP_bPzIF41fc4WTiOFPFpktY1tJdBS2_XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD0-hW-XesT_YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54aOEteNER-ZkZRpnR5vBYT03Soje8KBNez2x-GUlhRDQwS_11PDditMGObAScaJVHrZm-HohiH_rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ_rokQ",
+    "e": "AQAB"
+}`
 
+		validJwk := &api.JWK{}
+		json.Unmarshal([]byte(validPublicKey), validJwk)
 		invalidPublicKey := "invalidPublicKey"
 
 		signatures := []api.PartyAttachmentSignature{
 			{
 				LegalEntity: "urn:agb:00000002",
-				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: validPublicKey},
+				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: *validJwk},
 			},
 		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
@@ -113,7 +111,7 @@ kQIDAQAB
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
 			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
-			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: invalidPublicKey}
+			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: api.JWK{}}
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -126,20 +124,18 @@ kQIDAQAB
 
 		t.Run("it fails when the keys are not equal", func(t *testing.T) {
 
-			otherValidPublicKey := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh
-8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
-iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
-0+hW+XesT/YkhJSrOA5UxglojI2LgArCzbwlbUUhidMH7962uC87IYvhOux8DK54
-aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
-rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
-kQIDAQAB
------END PUBLIC KEY-----`
+			otherValidPublicKey := `{
+    "kty": "RSA",
+    "n": "uKjoosQFSAYCS-QQGVBh8N-GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP_bPzIF41fc4WTiOFPFpktY1tJdBS2_XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD0-hW-XesT_YkhJSrOA5UxglojI2LgArCzbwlbUUhidMH7962uC87IYvhOux8DK54aOEteNER-ZkZRpnR5vBYT03Soje8KBNez2x-GUlhRDQwS_11PDditMGObAScaJVHrZm-HohiH_rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ_rokQ",
+    "e": "AQAB"
+}`
+			otherValidJwk := &api.JWK{}
+			json.Unmarshal([]byte(otherValidPublicKey), otherValidJwk)
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
 			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
-			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: otherValidPublicKey}
+			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: *otherValidJwk}
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -155,30 +151,16 @@ kQIDAQAB
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		registryMock := mock3.NewMockRegistryClient(ctrl)
-		publicKey1 := `-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh
-8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
-iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
-0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
-aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
-rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
-kQIDAQAB
------END PUBLIC KEY-----`
+		publicKey1 := `{
+    "kty": "RSA",
+    "n": "uKjoosQFSAYCS-QQGVBh8N-GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP_bPzIF41fc4WTiOFPFpktY1tJdBS2_XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD0-hW-XesT_YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54aOEteNER-ZkZRpnR5vBYT03Soje8KBNez2x-GUlhRDQwS_11PDditMGObAScaJVHrZm-HohiH_rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ_rokQ",
+    "e": "AQAB"
+}`
 
-		// same key with different white space
-		publicKey2 := `-----BEGIN PUBLIC KEY-----
-        MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAuKjoosQFSAYCS+QQGVBh 
-
-8N+GFd34ufUAdGBwLvvMzB0JPpGpEX0oo8RS4dL8JCruHlzT4HP/bPzIF41fc4WT
-
-iOFPFpktY1tJdBS2/XS8i2ehzFLw3YJ3qWX9XQGdJfNHdbbz9h1RXIgBs7UdipHD
-0+hW+XesT/YkhJSrOA5UxglojI2LrArCzbwlbUUhidMH7962uC87IYvhOux8DK54
-aOEteNER+ZkZRpnR5vBYT03Soje8KBNez2x+GUlhRDQwS/11PDditMGObAScaJVH
-rZm+HohiH/rRcQFl0QWLWCFwpPdfu5eHEputNl9GOjvPpRezuvDYN641jL7uZ/ro
-kQIDAQAB
------END PUBLIC KEY-----`
-
-		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &publicKey1}, nil)
+		jwk := api.JWK{}
+		json.Unmarshal([]byte(publicKey1), &jwk)
+		keys := []interface{}{jwk.AdditionalProperties}
+		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{Keys: keys}, nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
@@ -186,7 +168,7 @@ kQIDAQAB
 			{
 				Attachment:  "123",
 				LegalEntity: "urn:agb:00000002",
-				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: publicKey2},
+				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: jwk},
 			},
 		}
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
@@ -227,7 +209,7 @@ kQIDAQAB
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000001"})
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000001"})
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
@@ -251,7 +233,7 @@ kQIDAQAB
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000002"})
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000002"})
 		defer ctrl.Finish()
 		foo := "foo"
 		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
@@ -298,7 +280,7 @@ kQIDAQAB
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		// 00000002 is managed by this node
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:agb:00000002"}).Return("public key of urn:agb:00000002", nil)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000002"}).Return(true)
 
 		// expect to receive a decrypt call for 00000002
 		validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
@@ -401,9 +383,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("", errors.New("could not load key"))
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(false)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(true)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(false)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -418,9 +400,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", nil)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", nil)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(false)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(true)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(true)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -430,13 +412,13 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 			t.Error("expected rule to be valid")
 		}
 	})
-	t.Run("current node manges custodian", func(t *testing.T) {
+	t.Run("current node manages custodian", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000001"}).AnyTimes().Return("key of 1", nil)
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000002"}).AnyTimes().Return("key of 2", errors.New("could not load key"))
-		cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "00000003"}).AnyTimes().Return("key of 3", errors.New("could not load key"))
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(true)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(false)
+		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(false)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -457,7 +439,10 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
-	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: legalEntity}).AnyTimes().Return("key of 1", nil)
+	privkey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	jwk, _ := jwk.New(&privkey.PublicKey)
+	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: legalEntity}).AnyTimes().Return(true)
+	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: legalEntity}).AnyTimes().Return(jwk, nil)
 	cryptoMock.EXPECT().SignFor(hexEncodedHash, gomock.Eq(types.LegalEntity{URI: legalEntity})).Return([]byte("signedBytes"), nil)
 
 	// prepare method parameter
@@ -495,7 +480,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 		t.Error("expected signature")
 	}
 
-	if pas.Signature.PublicKey != "key of 1" {
+	if len(pas.Signature.PublicKey.AdditionalProperties) == 0 {
 		t.Error("expected payload.signature.publicKey to be set")
 	}
 
@@ -544,8 +529,9 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
-	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return("key of 0", nil)
-	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return("", nil)
+	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return(true)
+	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return(false)
 
 	validConsent, err := ioutil.ReadFile("../test-data/fhir-consent.json")
 	if err != nil {
@@ -605,7 +591,8 @@ kQIDAQAB
 	custodianAGB := "urn:agb:00000001"
 	actorAGB := "urn:agb:00000002"
 
-	cryptoMock.EXPECT().PublicKeyInPEM(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return("key", nil)
+	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return(true)
 	cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
 	cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
 	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(&db.Organization{PublicKey: &validPublicKey}, nil)

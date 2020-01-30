@@ -19,6 +19,8 @@
 package api
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/json"
 	"net/http"
 	"testing"
@@ -26,6 +28,8 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/labstack/echo/v4"
+	"github.com/lestrrat-go/jwx/jwa"
+	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	cryptomock "github.com/nuts-foundation/nuts-crypto/mock"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
@@ -87,9 +91,13 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		registryMock := registrymock.NewMockRegistryClient(ctrl)
 		cryptoMock := cryptomock.NewMockClient(ctrl)
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
-		publicKey := "123"
-		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{PublicKey: &publicKey}, nil).Times(2)
-		cryptoMock.EXPECT().PublicKeyInPEM(gomock.Any()).Return(publicKey, nil).AnyTimes()
+		sk, _ := rsa.GenerateKey(rand.Reader, 1024)
+		publicKey, _ := jwk.New(sk.Public())
+		jwkMap, _ := crypto.JwkToMap(publicKey)
+		jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
+		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil).Times(2)
+		cryptoMock.EXPECT().PublicKeyInJWK(gomock.Any()).Return(publicKey, nil).AnyTimes()
+		cryptoMock.EXPECT().KeyExistsFor(gomock.Any()).Return(true).AnyTimes()
 		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
 		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
