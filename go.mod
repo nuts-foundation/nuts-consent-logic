@@ -18,9 +18,9 @@ require (
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20200121093403-d1ec6e23ab2d
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20200206083919-07f174baa8e2
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20200127075335-afcefe897a71
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200206083853-1b0a343c1495
+	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200212103614-a861d36864b8
 	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200108104034-2a3b8cc778c3
-	github.com/nuts-foundation/nuts-go-core v0.0.0-20200130105519-4620adf455e9
+	github.com/nuts-foundation/nuts-go-core v0.0.0-20200220093939-3a4292f30472
 	github.com/nuts-foundation/nuts-registry v0.0.0-20200211142433-9d1d2985be8e
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/satori/go.uuid v1.2.0

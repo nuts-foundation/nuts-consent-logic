@@ -273,6 +273,8 @@ github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029153434-8e47d64e4f2b
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20191029153434-8e47d64e4f2b/go.mod h1:DjmX+RVdGVYAtwIR9Z2cjKOzkvh0Dpy299GfPO5uimc=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200206083853-1b0a343c1495 h1:EgLoNF5Es7DIpwxzd2NuADMP3m4iWn8sZ+gyrI5u34I=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200206083853-1b0a343c1495/go.mod h1:c4L7yJTob5c/YtkUau/NQ9JQ64U0KbNsuRZIuhzxieA=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200212103614-a861d36864b8 h1:vwezadSjowikekcSkqkJqYmXukNnebXS/zccdH03cBY=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200212103614-a861d36864b8/go.mod h1:ULz4jGIapxnhlvwYs7/NIZyq+u9tR7wYLPWChYsFuL0=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200106133706-43690c029d3d h1:FrwQAhp8XJn6ETlE1+ksnNGpRQKYZuvO6i2cKCBG+Vk=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200106133706-43690c029d3d/go.mod h1:cKPyoodDvPAjDhW4Q/BtM2NWPgOoGFol1JzT6eWNXcQ=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200108104034-2a3b8cc778c3 h1:CKe8U3xEGMkZLVXRACIR+Szd507HrOmxcYIcVGGs5Us=
@@ -286,6 +288,8 @@ github.com/nuts-foundation/nuts-go-core v0.0.0-20200121092218-8206844d5854/go.mo
 github.com/nuts-foundation/nuts-go-core v0.0.0-20200128062821-3d36593be9c5/go.mod h1:xltL3S+vqhSMYkTRIWyaVgtDk7y8KIENZmTbVIPIMcw=
 github.com/nuts-foundation/nuts-go-core v0.0.0-20200130105519-4620adf455e9 h1:TN63qKwNTLVthdHy0z3FYAfwYoYfR1DEMhCFbjlEfU0=
 github.com/nuts-foundation/nuts-go-core v0.0.0-20200130105519-4620adf455e9/go.mod h1:xltL3S+vqhSMYkTRIWyaVgtDk7y8KIENZmTbVIPIMcw=
+github.com/nuts-foundation/nuts-go-core v0.0.0-20200220093939-3a4292f30472 h1:VxcYvZY14fYJOPEJ3YorptibMU9NLw9UNQfBxEYEJaw=
+github.com/nuts-foundation/nuts-go-core v0.0.0-20200220093939-3a4292f30472/go.mod h1:xltL3S+vqhSMYkTRIWyaVgtDk7y8KIENZmTbVIPIMcw=
 github.com/nuts-foundation/nuts-registry v0.0.0-20191209153959-67dd0910b057 h1:kn5VkvVJWdf0suyC2AO6QlGEK+0V62Vv6B54mINecmo=
 github.com/nuts-foundation/nuts-registry v0.0.0-20191209153959-67dd0910b057/go.mod h1:zj8lpRLEYlJkC7fo+c8NO7pjkSXR3DvvpyyJ2YSiBKU=
 github.com/nuts-foundation/nuts-registry v0.0.0-20200124142014-3b6dba3fa661 h1:GmEis61YPbFmxvebuqJQxqqX8hrbLZ3Ep3bjtQOC7LA=
