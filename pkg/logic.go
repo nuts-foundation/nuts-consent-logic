@@ -624,24 +624,25 @@ func (cl *ConsentLogic) Start() error {
 	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
 	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()
 	// This module has no mode feature (server/client) so we delegate it completely to the global mode
-	if core.NutsConfig().GetEngineMode("") == core.ServerEngineMode {
-		publisher, err := cl.NutsEventOctopus.EventPublisher("consent-logic")
-		if err != nil {
-			logger().WithError(err).Panic("Could not subscribe to event publisher")
-		}
-		cl.EventPublisher = publisher
+	if core.NutsConfig().GetEngineMode("") != core.ServerEngineMode {
+		return nil
+	}
+	publisher, err := cl.NutsEventOctopus.EventPublisher("consent-logic")
+	if err != nil {
+		logger().WithError(err).Panic("Could not subscribe to event publisher")
+	}
+	cl.EventPublisher = publisher
 
-		err = cl.NutsEventOctopus.Subscribe("consent-logic",
-			events.ChannelConsentRequest,
-			map[string]events.EventHandlerCallback{
-				events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
-				events.EventConsentRequestValid:               cl.HandleEventConsentRequestValid,
-				events.EventConsentRequestAcked:               cl.HandleEventConsentRequestAcked,
-				events.EventConsentDistributed:                cl.HandleEventConsentDistributed,
-			})
-		if err != nil {
-			panic(err)
-		}
+	err = cl.NutsEventOctopus.Subscribe("consent-logic",
+		events.ChannelConsentRequest,
+		map[string]events.EventHandlerCallback{
+			events.EventDistributedConsentRequestReceived: cl.HandleIncomingCordaEvent,
+			events.EventConsentRequestValid:               cl.HandleEventConsentRequestValid,
+			events.EventConsentRequestAcked:               cl.HandleEventConsentRequestAcked,
+			events.EventConsentDistributed:                cl.HandleEventConsentDistributed,
+		})
+	if err != nil {
+		panic(err)
 	}
 	return nil
 }
