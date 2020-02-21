@@ -275,6 +275,8 @@ github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200206083853-1b0a343c1495
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200206083853-1b0a343c1495/go.mod h1:c4L7yJTob5c/YtkUau/NQ9JQ64U0KbNsuRZIuhzxieA=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200212103614-a861d36864b8 h1:vwezadSjowikekcSkqkJqYmXukNnebXS/zccdH03cBY=
 github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200212103614-a861d36864b8/go.mod h1:ULz4jGIapxnhlvwYs7/NIZyq+u9tR7wYLPWChYsFuL0=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200221072458-686600d788ca h1:g6uekrBCbXBB9DD0VZ8Q5559DIwWD8itQcjq4fQ/kgo=
+github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200221072458-686600d788ca/go.mod h1:ULz4jGIapxnhlvwYs7/NIZyq+u9tR7wYLPWChYsFuL0=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200106133706-43690c029d3d h1:FrwQAhp8XJn6ETlE1+ksnNGpRQKYZuvO6i2cKCBG+Vk=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200106133706-43690c029d3d/go.mod h1:cKPyoodDvPAjDhW4Q/BtM2NWPgOoGFol1JzT6eWNXcQ=
 github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200108104034-2a3b8cc778c3 h1:CKe8U3xEGMkZLVXRACIR+Szd507HrOmxcYIcVGGs5Us=
