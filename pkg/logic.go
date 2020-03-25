@@ -26,9 +26,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	core "github.com/nuts-foundation/nuts-go-core"
 	"reflect"
 	"sync"
+
+	core "github.com/nuts-foundation/nuts-go-core"
 
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
@@ -535,7 +536,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 		return
 	}
 
-	var fhirConsents []FHIRResourceWithHash
+	var fhirConsents = map[string]FHIRResourceWithHash{}
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
@@ -549,11 +550,11 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 				logger().Error("Could not decrypt fhir consent")
 				return
 			}
-			fhirConsents = append(fhirConsents, FHIRResourceWithHash{
+			fhirConsents[*cr.AttachmentHash] = FHIRResourceWithHash{
 				Hash:         *cr.AttachmentHash,
 				PreviousHash: cr.Metadata.PreviousAttachmentHash,
 				FHIRResource: fhirConsentString,
-			})
+			}
 		}
 	}
 
@@ -595,7 +596,7 @@ func (cl ConsentLogic) isRelevantForThisNode(patientConsent cStore.PatientConsen
 }
 
 // PatientConsentFromFHIRRecord extracts the PatientConsent from a FHIR consent record encoded as json string.
-func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsents []FHIRResourceWithHash) cStore.PatientConsent {
+func (ConsentLogic) PatientConsentFromFHIRRecord(fhirConsents map[string]FHIRResourceWithHash) cStore.PatientConsent {
 	var patientConsent cStore.PatientConsent
 
 	// FixMe: we should add a check if the actors, subjects and custodians are all the same for each of these fhirConsents
