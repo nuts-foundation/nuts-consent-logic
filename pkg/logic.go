@@ -263,7 +263,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					// Fixme: this error handling should be rewritten
 					jwkFromReg, err := legalEntity.CurrentPublicKey()
 					if err != nil {
-						errorMsg := fmt.Sprintf("Could not get public key from registry: %w", err)
+						errorMsg := fmt.Sprintf("Could not get public key from registry: %v", err)
 						logger().Warn(errorMsg)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
