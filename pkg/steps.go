@@ -92,7 +92,7 @@ func (cl ConsentLogic) encryptFhirConsent(fhirConsent string, request CreateCons
 	// and custodian
 	jwk, err = cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
 	if err != nil {
-		logger().Errorf("error while getting public key for custodian: %v from crypto: %w", request.Custodian, err)
+		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
 	partyKeys = append(partyKeys, jwk)

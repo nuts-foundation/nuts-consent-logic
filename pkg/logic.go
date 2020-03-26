@@ -387,7 +387,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 
 		jwk, err := crypto.JwkToMap(pubKey)
 		if err != nil {
-			logger().Errorf("Error in transforming pubKey for %s: %w", legalEntityToSignFor, err)
+			logger().Errorf("Error in transforming pubKey for %s: %v", legalEntityToSignFor, err)
 			return nil, err
 		}
 		hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
