@@ -26,9 +26,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	core "github.com/nuts-foundation/nuts-go-core"
 	"reflect"
 	"sync"
+
+	core "github.com/nuts-foundation/nuts-go-core"
 
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
@@ -262,7 +263,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					// Fixme: this error handling should be rewritten
 					jwkFromReg, err := legalEntity.CurrentPublicKey()
 					if err != nil {
-						errorMsg := fmt.Sprintf("Could not get public key from registry: %w", err)
+						errorMsg := fmt.Sprintf("Could not get public key from registry: %v", err)
 						logger().Warn(errorMsg)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
@@ -386,7 +387,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 
 		jwk, err := crypto.JwkToMap(pubKey)
 		if err != nil {
-			logger().Errorf("Error in transforming pubKey for %s: %w", legalEntityToSignFor, err)
+			logger().Errorf("Error in transforming pubKey for %s: %v", legalEntityToSignFor, err)
 			return nil, err
 		}
 		hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
