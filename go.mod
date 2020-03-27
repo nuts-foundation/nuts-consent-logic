@@ -13,7 +13,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/labstack/echo/v4 v4.1.11
-	github.com/lestrrat-go/jwx v0.9.0
+	github.com/lestrrat-go/jwx v0.9.1
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20200121093403-d1ec6e23ab2d
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20200206083919-07f174baa8e2
