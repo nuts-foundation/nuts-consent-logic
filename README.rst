@@ -1,6 +1,6 @@
-.. image:: https://travis-ci.com/nuts-foundation/nuts-consent-logic.svg?branch=master
-    :target: https://travis-ci.com/nuts-foundation/nuts-consent-logic
-    :alt: Test status
+.. image:: https://circleci.com/gh/nuts-foundation/nuts-consent-logic.svg?style=svg
+    :target: https://circleci.com/gh/nuts-foundation/nuts-consent-logic
+    :alt: Build Status
 
 .. image:: https://codecov.io/gh/nuts-foundation/nuts-consent-logic/branch/master/graph/badge.svg
   :target: https://codecov.io/gh/nuts-foundation/nuts-consent-logic
