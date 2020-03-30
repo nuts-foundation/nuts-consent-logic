@@ -43,7 +43,7 @@ import (
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/thedevsaddam/gojsonq.v2"
+	"github.com/thedevsaddam/gojsonq/v2"
 )
 
 type ConsentLogicConfig struct {

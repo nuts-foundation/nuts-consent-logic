@@ -5,7 +5,6 @@ go 1.13
 require (
 	github.com/cbroglie/mustache v1.0.1
 	github.com/deepmap/oapi-codegen v1.3.6
-	github.com/gogo/protobuf v1.3.1 // indirect
 	github.com/golang/mock v1.4.3
 	github.com/hashicorp/go-hclog v0.9.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
@@ -18,7 +17,7 @@ require (
 	github.com/nuts-foundation/nuts-consent-store v0.0.0-20200327151610-7456dd807376
 	github.com/nuts-foundation/nuts-crypto v0.0.0-20200327150232-130b8ddecf9c
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200327150853-a133b3b6c1ea
-	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200327133823-052b777e1947
+	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200330071816-3d6c497f6147
 	github.com/nuts-foundation/nuts-go-core v0.0.0-20200327150009-4443715cec5f
 	github.com/nuts-foundation/nuts-registry v0.0.0-20200326144333-14d5a9b3b398
 	github.com/prometheus/procfs v0.0.5 // indirect
@@ -27,5 +26,5 @@ require (
 	github.com/spf13/cobra v0.0.7
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.5.1
-	gopkg.in/thedevsaddam/gojsonq.v2 v2.3.0
+	github.com/thedevsaddam/gojsonq/v2 v2.5.2
 )
