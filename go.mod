@@ -13,13 +13,13 @@ require (
 	github.com/labstack/echo/v4 v4.1.13
 	github.com/lestrrat-go/jwx v0.9.1
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
-	github.com/nuts-foundation/consent-bridge-go-client v0.0.0-20200121093403-d1ec6e23ab2d
-	github.com/nuts-foundation/nuts-consent-store v0.0.0-20200327151610-7456dd807376
-	github.com/nuts-foundation/nuts-crypto v0.0.0-20200327150232-130b8ddecf9c
+	github.com/nuts-foundation/consent-bridge-go-client v0.13.0
+	github.com/nuts-foundation/nuts-consent-store v0.13.0
+	github.com/nuts-foundation/nuts-crypto v0.13.0
 	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200327150853-a133b3b6c1ea
-	github.com/nuts-foundation/nuts-fhir-validation v0.0.0-20200330071816-3d6c497f6147
-	github.com/nuts-foundation/nuts-go-core v0.0.0-20200327150009-4443715cec5f
-	github.com/nuts-foundation/nuts-registry v0.0.0-20200326144333-14d5a9b3b398
+	github.com/nuts-foundation/nuts-fhir-validation v0.13.0
+	github.com/nuts-foundation/nuts-go-core v0.13.0
+	github.com/nuts-foundation/nuts-registry v0.13.0
 	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.5.0
