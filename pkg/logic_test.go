@@ -27,6 +27,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
+	"fmt"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -503,7 +504,7 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 	}
 
 	cl := ConsentLogic{}
-	patientConsent := cl.PatientConsentFromFHIRRecord([]FHIRResourceWithHash{consentWithHash})
+	patientConsent := cl.PatientConsentFromFHIRRecord(map[string]FHIRResourceWithHash{"123": consentWithHash})
 
 	expectedCustodian := "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
 	actor := "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"
@@ -525,23 +526,12 @@ func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
 }
 
 func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
-	//t.Skip("the distributed_event is out of date. Collect a new one.")
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-	cryptoMock := mock2.NewMockClient(ctrl)
-	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
-	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).AnyTimes().Return(true)
-	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}).AnyTimes().Return(false)
-
+	start, _ := time.Parse(time.RFC3339, "2019-07-01T12:00:00+02:00")
+	end, _ := time.Parse(time.RFC3339, "2020-07-01T12:00:00+02:00")
 	validConsent, err := ioutil.ReadFile("../test-data/fhir-consent.json")
 	if err != nil {
 		t.Error(err)
 	}
-	cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"}).Return(validConsent, nil)
-	start, _ := time.Parse(time.RFC3339, "2019-07-01T12:00:00+02:00")
-	end, _ := time.Parse(time.RFC3339, "2020-07-01T12:00:00+02:00")
-
-	consentStoreMock := mock4.NewMockConsentStoreClient(ctrl)
 	patientConsents := []pkg3.PatientConsent{{
 		ID:        "35d82f6dce72592cd2e9a197f50506281778e4aba59bcde3bd930bbf95386304",
 		Actor:     "urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
@@ -549,20 +539,60 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		Records:   []pkg3.ConsentRecord{{DataClasses: []pkg3.DataClass{{ConsentRecordID: 0, Code: "http://hl7.org/fhir/resource-types#Observation"}}, ValidFrom: start, ValidTo: &end, Hash: "71A92248E30B88FCDFC884D777A52C66F4810AB33A30B02A25FF2E17FBDF9857"}},
 		Subject:   "urn:oid:2.16.840.1.113883.2.4.6.3:999999990",
 	}}
-	consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)
 
-	publisherMock := mock.NewMockIEventPublisher(ctrl)
-	publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+	allOrgs := []string{
+		"urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
+		"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
+	}
 
-	cl := &ConsentLogic{NutsCrypto: cryptoMock, NutsConsentStore: consentStoreMock, EventPublisher: publisherMock}
-	eventConsentDistributed, err := ioutil.ReadFile("../test-data/distributed_event")
-	if err != nil {
-		t.Error(err)
+	administratedOrgs := [][]string{
+		{
+			"urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
+		},
+		{
+			"urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
+			"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
+		},
 	}
-	event := &pkg.Event{
-		Payload: string(eventConsentDistributed),
+
+	for _, orgs := range administratedOrgs {
+		tName := fmt.Sprintf("%v are administrated by one node", orgs)
+
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		publisherMock := mock.NewMockIEventPublisher(ctrl)
+		consentStoreMock := mock4.NewMockConsentStoreClient(ctrl)
+
+		eventConsentDistributed, err := ioutil.ReadFile("../test-data/distributed_event")
+		if err != nil {
+			t.Error(err)
+		}
+		event := &pkg.Event{
+			Payload: string(eventConsentDistributed),
+		}
+
+		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+		consentStoreMock.EXPECT().RecordConsent(context.Background(), patientConsents).Return(nil)
+		cryptoMock := mock2.NewMockClient(ctrl)
+		cl := &ConsentLogic{NutsCrypto: cryptoMock, NutsConsentStore: consentStoreMock, EventPublisher: publisherMock}
+
+		for _, org := range allOrgs {
+			cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: org}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+		}
+
+		t.Run(tName, func(t *testing.T) {
+			for _, org := range orgs {
+				cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: org}).AnyTimes().Return(true)
+				cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: org}).AnyTimes().Return(validConsent, nil)
+			}
+			for _, org := range allOrgs {
+				// already set mocks are not overriden
+				cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: org}).AnyTimes().Return(false)
+			}
+
+			cl.HandleEventConsentDistributed(event)
+		})
 	}
-	cl.HandleEventConsentDistributed(event)
 }
 
 func Test_hashFHIRConsent(t *testing.T) {
