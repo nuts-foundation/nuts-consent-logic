@@ -12,15 +12,13 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/labstack/echo/v4 v4.1.13
 	github.com/lestrrat-go/jwx v0.9.1
-	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nuts-foundation/consent-bridge-go-client v0.13.0
 	github.com/nuts-foundation/nuts-consent-store v0.13.0
 	github.com/nuts-foundation/nuts-crypto v0.13.0
-	github.com/nuts-foundation/nuts-event-octopus v0.0.0-20200327150853-a133b3b6c1ea
+	github.com/nuts-foundation/nuts-event-octopus v0.13.0
 	github.com/nuts-foundation/nuts-fhir-validation v0.13.0
 	github.com/nuts-foundation/nuts-go-core v0.13.0
 	github.com/nuts-foundation/nuts-registry v0.13.0
-	github.com/prometheus/procfs v0.0.5 // indirect
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.5.0
 	github.com/spf13/cobra v0.0.7
