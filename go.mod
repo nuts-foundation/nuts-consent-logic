@@ -10,7 +10,7 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
-	github.com/labstack/echo/v4 v4.1.13
+	github.com/labstack/echo/v4 v4.1.16
 	github.com/lestrrat-go/jwx v0.9.1
 	github.com/nuts-foundation/consent-bridge-go-client v0.13.0
 	github.com/nuts-foundation/nuts-consent-store v0.13.0
