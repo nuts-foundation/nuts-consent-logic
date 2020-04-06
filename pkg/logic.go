@@ -258,6 +258,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						_ = cl.EventPublisher.Publish(events.ChannelConsentRetry, *event)
 						return
 					}
+
 					jwkFromSig, err := crypto.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
 					if err != nil {
 						errorMsg := fmt.Sprintf("Unable to parse signature public key as JWK: %v", err)
@@ -274,7 +275,9 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					// In practice this won't cause problems for now since certificates used for signing consent records
 					// are valid for 1 year since they were introduced (april 2020). So we just have to make sure we
 					// switch to a signature format (JWS) which does contain the time of signing before april 2021.
-					orgHasKey, err := legalEntity.HasKey(jwkFromSig, time.Now())
+					// https://github.com/nuts-foundation/nuts-consent-logic/issues/45
+					checkTime := time.Now()
+					orgHasKey, err := legalEntity.HasKey(jwkFromSig, checkTime)
 					// Fixme: this error handling should be rewritten
 					if err != nil {
 						errorMsg := fmt.Sprintf("Could not check JWK against organization keys: %v", err)
@@ -285,9 +288,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					}
 
 					if !orgHasKey {
-						errorMsg := fmt.Sprintf("Organization %s does not own the signature's public key", legalEntityID)
+						errorMsg := fmt.Sprintf("Organization %s did not have a valid signature for the corresponding public key at the given time %s", legalEntityID, checkTime.String())
 						logger().Warn(errorMsg)
-						logger().Debugf("publicKey from signature: %s ", signature.Signature.PublicKey)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
