@@ -77,7 +77,6 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		validJwk := &api.JWK{}
 		json.Unmarshal([]byte(validPublicKey), validJwk)
-		invalidPublicKey := "invalidPublicKey"
 
 		signatures := []api.PartyAttachmentSignature{
 			{
@@ -92,11 +91,28 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			},
 		}
 
+		t.Run("it succeeds when organization has multiple keys", func(t *testing.T) {
+			otherKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+
+			ctrl := gomock.NewController(t)
+			publisherMock := mock.NewMockIEventPublisher(ctrl)
+			registryMock := mock3.NewMockRegistryClient(ctrl)
+			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(&otherKey.PublicKey, validPublicKey), nil)
+
+			encodedState, _ = json.Marshal(consentRequestState)
+			payload := base64.StdEncoding.EncodeToString(encodedState)
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+
+			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
+			cl.HandleIncomingCordaEvent(event)
+		})
+
 		t.Run("it fails with an invalid registry key", func(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &invalidPublicKey}, nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{Keys: []interface{}{map[string]interface{}{}}}, nil)
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -111,7 +127,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(validPublicKey), nil)
 			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: api.JWK{}}
 
 			encodedState, _ = json.Marshal(consentRequestState)
@@ -135,7 +151,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(validPublicKey), nil)
 			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: *otherValidJwk}
 
 			encodedState, _ = json.Marshal(consentRequestState)
@@ -160,8 +176,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		jwk := api.JWK{}
 		json.Unmarshal([]byte(publicKey1), &jwk)
-		keys := []interface{}{jwk.AdditionalProperties}
-		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{Keys: keys}, nil)
+		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(jwk.AdditionalProperties), nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
@@ -334,7 +349,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	publicKeyID1 := string(pubBytes)
 
 	registryClient := mock3.NewMockRegistryClient(ctrl)
-	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(&db.Organization{PublicKey: &publicKeyID1}, nil)
+	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(getOrganization(publicKeyID1), nil)
 
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
 	performer := IdentifierURI(performerID)
@@ -625,7 +640,7 @@ kQIDAQAB
 	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return(true)
 	cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
 	cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
-	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(&db.Organization{PublicKey: &validPublicKey}, nil)
+	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(getOrganization(validPublicKey), nil)
 
 	createConsentRequest := &CreateConsentRequest{
 		Custodian: IdentifierURI(custodianAGB),
@@ -637,4 +652,49 @@ kQIDAQAB
 	event, err := consentLogic.buildConsentRequestConstructedEvent(createConsentRequest)
 	assert.Nil(t, err)
 	assert.NotNil(t, event, "event should not be nil")
+}
+
+// getOrganization helper func to create organization with the given (mixed-format) keys. The keys can be in the following formats:
+// - PEM encoded public key as string
+// - JSON encoded JWK as string
+// - JWK as Go map[string]interface{}
+// - RSA public key as Go *rsa.PublicKey
+func getOrganization(keys ...interface{}) *db.Organization {
+	o := db.Organization{}
+	for _, key := range keys {
+		var keyAsJWK jwk.Key
+		var err error
+		{
+			keyAsString, ok := key.(string)
+			if ok {
+				keyAsJWK, _ = pkg2.PemToJwk([]byte(keyAsString))
+				if keyAsJWK == nil {
+					var asMap map[string]interface{}
+					err := json.Unmarshal([]byte(keyAsString), &asMap)
+					if err == nil {
+						key = asMap
+					}
+				}
+			}
+		}
+		{
+			keyAsMap2, ok := key.(map[string]interface{})
+			if ok {
+				keyAsJWK, err = pkg2.MapToJwk(keyAsMap2)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		{
+			keyAsPubKey, ok := key.(*rsa.PublicKey)
+			if ok {
+				keyAsJWK, _ = jwk.New(keyAsPubKey)
+			}
+		}
+		keyAsMap, _ := pkg2.JwkToMap(keyAsJWK)
+		keyAsMap["kty"] = keyAsJWK.KeyType().String()
+		o.Keys = append(o.Keys, keyAsMap)
+	}
+	return &o
 }
