@@ -38,7 +38,7 @@ import (
 	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
 	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
 	mock2 "github.com/nuts-foundation/nuts-crypto/mock"
-	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-event-octopus/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
@@ -100,6 +100,36 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(&otherKey.PublicKey, validPublicKey), nil)
 
 			encodedState, _ = json.Marshal(consentRequestState)
+			payload := base64.StdEncoding.EncodeToString(encodedState)
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
+
+			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
+			cl.HandleIncomingCordaEvent(event)
+		})
+
+		t.Run("it succeeds when signature is in JWS format", func(t *testing.T) {
+			signatures := []api.PartyAttachmentSignature{
+				{
+					LegalEntity: "urn:agb:00000002",
+					Signature: "eyJqd2siOnsiZSI6IkFRQUIiLCJrdHkiOiJSU0EiLCJuIjoidFdSTnBib001dFhBLXQ5X2Fqb251LTZYT2JjZkFhd1l2cmNDVjJRNThlNWZ0aS0tY1lGNnY2UTNMYjZjQ1BlZy1iSUZ2ZzZPTHRYM2JNT2JTR3RhSjF5NjdrRk55ZjBLQ2I5dXZMOGlfazFfTElRU3czUlhtMFExWGpsaW9sZ2t6akYwZjd0Vnh6eGhOd2R0T0E2bEFnNFdRSWlLSi14ZXpEai1IQ2wyY242NzRDQ1FUck1VVGlaUk5pZl9md0s1S1N3MWh1SUlKeTVUVWVER0hsLUNUaUVfVklkbDBxcnBJOEwzWGZNYUk0MEZ4R2tPQW1HNzJ1VTNOblhwREJfVndwV1VHSVdvOXloeXpuRXFSUkcyRlVCYXh4ekFqRFNHOTBYdVJHandEaTRoY2RKVlI5QVppZmx6UWU1S3Jsam9CbllUYkVWY2s0OVp2SG9fZnZPZkp3In0sImFsZyI6IlJTMjU2In0.AQID.AV5cu3WNMLWv5SO7ZriGQc8k_SY_C1mILuaW9GWbuJy4NddJiWUdsBQ-D3K67I8_C2jscPRUy4TenVDnrvABaErbC3-7N90ar1J0mkzw0p3zBYTe564H5yHLALieFpkNtL7ypDl0VxkKm4sBmkJYs9QB3r4_OFtbJ9tzb0Qa1veAahS5CpW6kPivrS7nbsUiRn1L8r36eUJPmJ61l3RhUxXUf9SifqnjhekGToAzLgMUJD7oTZsxP_LxKC1hTBQntOWM-YkALzLKbO4MQ8cuXGd-MgnMeui9tJK7jni7MHtartAr2d5rgoPh4jWQLF-xTmNehO14daMUEHQAEYhFGQ",
+				},
+			}
+			jwkFromJWS, _ := crypto.JWKFromJWS(signatures[0].Signature.(string))
+			pubKeyFromJWS, _ := jwkFromJWS.Materialize()
+			crs := consentRequestState
+			crs.ConsentRecords = []api.ConsentRecord{
+				{
+					Signatures: &signatures,
+				},
+			}
+
+			ctrl := gomock.NewController(t)
+			publisherMock := mock.NewMockIEventPublisher(ctrl)
+			registryMock := mock3.NewMockRegistryClient(ctrl)
+			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(pubKeyFromJWS), nil)
+
+			encodedState, _ = json.Marshal(crs)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
 			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
 			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
@@ -334,7 +364,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	party1ID := "agb:00000002"
 	performerID := "agb:00000007"
 
-	cryptoClient := pkg2.NewCryptoClient()
+	cryptoClient := crypto.NewCryptoClient()
 
 	_ = cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianID})
 
@@ -479,11 +509,11 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	newEvent, err := cl.signConsentRequest(event)
 
 	// check for errors
-	if err != nil {
-		t.Fatalf("did not expected error: %s", err)
+	if !assert.NoError(t, err) {
+		return
 	}
-	if newEvent.Error != nil {
-		t.Errorf("did not expected error: %s", *newEvent.Error)
+	if !assert.Nil(t, newEvent.Error, "did not expected error") {
+		return
 	}
 
 	// decode payload
@@ -492,22 +522,9 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	_ = json.Unmarshal(decodedPayload, &pas)
 
 	// Check all the values
-	if string(pas.LegalEntity) != "00000001" {
-		t.Error("expected signature")
-	}
-
-	if len(pas.Signature.PublicKey.AdditionalProperties) == 0 {
-		t.Error("expected payload.signature.publicKey to be set")
-	}
-
-	encodedSignatureBytes := base64.StdEncoding.EncodeToString([]byte("signedBytes"))
-	if pas.Signature.Data != encodedSignatureBytes {
-		t.Errorf("expected payload.signature.Data to be the signature %+v. got %+v", encodedSignatureBytes, pas.Signature.Data)
-	}
-
-	if pas.Attachment != consentRecordHash {
-		t.Error("expected payload.Attachment to be set")
-	}
+	assert.Equal(t, "00000001", string(pas.LegalEntity))
+	assert.Equal(t, base64.StdEncoding.EncodeToString([]byte("signedBytes")), pas.Signature)
+	assert.Equal(t, consentRecordHash, pas.Attachment)
 }
 
 func TestConsentLogic_ConsentRulesFromFHIRRecord(t *testing.T) {
@@ -667,7 +684,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 		{
 			keyAsString, ok := key.(string)
 			if ok {
-				keyAsJWK, _ = pkg2.PemToJwk([]byte(keyAsString))
+				keyAsJWK, _ = crypto.PemToJwk([]byte(keyAsString))
 				if keyAsJWK == nil {
 					var asMap map[string]interface{}
 					err := json.Unmarshal([]byte(keyAsString), &asMap)
@@ -680,7 +697,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 		{
 			keyAsMap2, ok := key.(map[string]interface{})
 			if ok {
-				keyAsJWK, err = pkg2.MapToJwk(keyAsMap2)
+				keyAsJWK, err = crypto.MapToJwk(keyAsMap2)
 				if err != nil {
 					panic(err)
 				}
@@ -692,7 +709,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 				keyAsJWK, _ = jwk.New(keyAsPubKey)
 			}
 		}
-		keyAsMap, _ := pkg2.JwkToMap(keyAsJWK)
+		keyAsMap, _ := crypto.JwkToMap(keyAsJWK)
 		keyAsMap["kty"] = keyAsJWK.KeyType().String()
 		o.Keys = append(o.Keys, keyAsMap)
 	}

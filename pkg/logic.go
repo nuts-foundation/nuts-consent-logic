@@ -19,6 +19,7 @@
 package pkg
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
@@ -26,6 +27,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/lestrrat-go/jwx/jwk"
+	"github.com/lestrrat-go/jwx/jws"
 	"sync"
 	"time"
 
@@ -122,9 +125,6 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 			return nil, errors.New("could not create the consentID for this combination of subject, actor and custodian")
 		}
 		logger().Debug("ConsentId generated")
-	}
-	{
-
 	}
 
 	for _, record := range createConsentRequest.Records {
@@ -259,11 +259,24 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						return
 					}
 
-					jwkFromSig, err := crypto.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
+					// Retrieve JWK in signature. Looks a bit odd, because of (temporary) backwards compatibility for
+					// RSA PKCS#1 v1.5 signature + key format. We just want to support JWS in the future.
+					var jwkFromSig jwk.Key
+					if jwsAsString, ok := signature.Signature.(string); ok {
+						jwkFromSig, err = crypto.JWKFromJWS(jwsAsString)
+					} else if signatureAsMap, ok := signature.Signature.(map[string]interface{}); ok {
+						if jwkAsMap, ok := signatureAsMap["publicKey"].(map[string]interface{}); ok {
+							jwkFromSig, err = crypto.MapToJwk(jwkAsMap)
+						} else {
+							err = errors.New("invalid JSON signature")
+						}
+					} else {
+						err = errors.New("signature should be either string encoded JWS or a map")
+					}
+
 					if err != nil {
-						errorMsg := fmt.Sprintf("Unable to parse signature public key as JWK: %v", err)
+						errorMsg := fmt.Sprintf("Unable to retrieve signing key from signature: %v", err)
 						logger().Warn(errorMsg)
-						logger().Debugf("publicKey from signature: %s ", signature.Signature.PublicKey)
 						event.Error = &errorMsg
 						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
 						return
@@ -392,17 +405,6 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		consentRecordHash := *cr.AttachmentHash
 		logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
-		pubKey, err := cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
-		if err != nil {
-			logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
-			return nil, err
-		}
-
-		jwk, err := crypto.JwkToMap(pubKey)
-		if err != nil {
-			logger().Errorf("Error in transforming pubKey for %s: %v", legalEntityToSignFor, err)
-			return nil, err
-		}
 		hexConsentRecordHash, err := hex.DecodeString(consentRecordHash)
 		if err != nil {
 			logger().Errorf("Could not decode consentRecordHash into hex value %s: %v", consentRecordHash, err)
@@ -415,14 +417,32 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 			logger().WithError(err).Error(errorDescription)
 			return &event, err
 		}
-		encodedSignatureBytes := base64.StdEncoding.EncodeToString(sigBytes)
+
+		var signature interface{}
+		if _, err = jws.Parse(bytes.NewReader(sigBytes)); err != nil {
+			// JWS
+			signature = sigBytes
+		} else {
+			// Backwards compatibility for plain RSA PKCS#1 v1.5 signatures
+			pubKey, err := cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+			if err != nil {
+				logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
+				return nil, err
+			}
+			jwk, err := crypto.JwkToMap(pubKey)
+			if err != nil {
+				logger().Errorf("Error in transforming pubKey for %s: %v", legalEntityToSignFor, err)
+				return nil, err
+			}
+			signature = bridgeClient.SignatureWithKey{
+				Data:      base64.StdEncoding.EncodeToString(sigBytes),
+				PublicKey: bridgeClient.JWK{AdditionalProperties: jwk},
+			}
+		}
 		partySignature := bridgeClient.PartyAttachmentSignature{
 			Attachment:  consentRecordHash,
 			LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
-			Signature: bridgeClient.SignatureWithKey{
-				Data:      encodedSignatureBytes,
-				PublicKey: bridgeClient.JWK{AdditionalProperties: jwk},
-			},
+			Signature:   signature,
 		}
 
 		payload, err := json.Marshal(partySignature)
