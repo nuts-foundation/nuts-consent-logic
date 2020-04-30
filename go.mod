@@ -13,7 +13,7 @@ require (
 	github.com/lestrrat-go/jwx v0.9.2
 	github.com/nuts-foundation/consent-bridge-go-client v0.13.0
 	github.com/nuts-foundation/nuts-consent-store v0.13.1-0.20200423143803-fb6e56b18a57
-	github.com/nuts-foundation/nuts-crypto v0.13.2
+	github.com/nuts-foundation/nuts-crypto v0.13.2-0.20200423143655-6c1f70c227f5
 	github.com/nuts-foundation/nuts-event-octopus v0.13.1-0.20200430091012-60e34b1803a9
 	github.com/nuts-foundation/nuts-fhir-validation v0.13.0
 	github.com/nuts-foundation/nuts-go-core v0.13.1-0.20200422145233-a9d171e8b054
