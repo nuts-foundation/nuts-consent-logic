@@ -21,7 +21,6 @@ package engine
 import (
 	"go/types"
 
-	"github.com/deepmap/oapi-codegen/pkg/runtime"
 	"github.com/nuts-foundation/nuts-consent-logic/api"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
 	engine "github.com/nuts-foundation/nuts-go-core"
@@ -40,7 +39,7 @@ func NewConsentLogicEngine() *engine.Engine {
 		ConfigKey: "clogic",
 		FlagSet:   flagSet(),
 		Shutdown:  cl.Shutdown,
-		Routes: func(router runtime.EchoRouter) {
+		Routes: func(router engine.EchoRouter) {
 			api.RegisterHandlers(router, &api.Wrapper{Cl: cl})
 		},
 	}
