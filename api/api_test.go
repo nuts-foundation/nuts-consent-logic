@@ -52,6 +52,10 @@ func (EventPublisherMock) Publish(subject string, event pkg2.Event) error {
 	return nil
 }
 
+func (m EventPublisherMock) PublishVendorEvent(subject string, event pkg2.VendorEvent) error {
+	panic("implement me")
+}
+
 func jsonRequest() CreateConsentRequest {
 	// optional params:
 	performer := IdentifierURI("agb:00000007")
