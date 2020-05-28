@@ -111,7 +111,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 
 	{
 		if !cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(createConsentRequest.Custodian)}) {
-			return nil, errors.New("custodian is not a known vendor")
+			return nil, errors.New("custodian is not a known organization (no private key found on this node)")
 		}
 		logger().Debug("Custodian is known")
 	}
