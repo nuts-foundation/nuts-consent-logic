@@ -58,7 +58,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		// Expect a call to the error channel
-		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentErrored), gomock.Any())
+		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 		defer ctrl.Finish()
 
 		payload := base64.StdEncoding.EncodeToString([]byte(""))
@@ -117,7 +117,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
 			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
-			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentErrored), gomock.Any())
+			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 			cl.HandleIncomingCordaEvent(event)
@@ -133,7 +133,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
 			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
-			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentErrored), gomock.Any())
+			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 			cl.HandleIncomingCordaEvent(event)
@@ -157,7 +157,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
 			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
-			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentErrored), gomock.Any())
+			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 			cl.HandleIncomingCordaEvent(event)

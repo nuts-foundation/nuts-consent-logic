@@ -220,15 +220,17 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	if err != nil {
 		errorDescription := "Could not base64 decode event payload"
 		event.Error = &errorDescription
+		event.Name = events.EventErrored
 		logger().WithError(err).Error(errorDescription)
-		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	}
 	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
 		errorDescription := "Could not unmarshall event payload"
 		event.Error = &errorDescription
+		event.Name = events.EventErrored
 		logger().WithError(err).Error(errorDescription)
-		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 		return
 	}
 
@@ -264,8 +266,9 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						errorMsg := fmt.Sprintf("Unable to parse signature public key as JWK: %v", err)
 						logger().Warn(errorMsg)
 						logger().Debugf("publicKey from signature: %s ", signature.Signature.PublicKey)
+						event.Name = events.EventErrored
 						event.Error = &errorMsg
-						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 						return
 					}
 
@@ -282,16 +285,18 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					if err != nil {
 						errorMsg := fmt.Sprintf("Could not check JWK against organization keys: %v", err)
 						logger().Warn(errorMsg)
+						event.Name = events.EventErrored
 						event.Error = &errorMsg
-						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 						return
 					}
 
 					if !orgHasKey {
 						errorMsg := fmt.Sprintf("Organization %s did not have a valid signature for the corresponding public key at the given time %s", legalEntityID, checkTime.String())
 						logger().Warn(errorMsg)
+						event.Name = events.EventErrored
 						event.Error = &errorMsg
-						_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+						_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 						return
 					}
 
@@ -325,9 +330,10 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		fhirConsent, err := cl.decryptConsentRecord(cr, legalEntityToSignFor)
 		if err != nil {
 			errorDescription := "Could not decrypt consent record"
+			event.Name = events.EventErrored
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
-			_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 			return
 		}
 
@@ -335,9 +341,10 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		// =======================
 		if validationResult, err := cl.validateFhirConsentResource(fhirConsent); !validationResult || err != nil {
 			errorDescription := "Consent record invalid"
+			event.Name = events.EventErrored
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
-			_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 		}
 
 		// publish EventConsentRequestValid
@@ -356,8 +363,9 @@ func (cl ConsentLogic) HandleEventConsentRequestAcked(event *events.Event) {
 
 	if newEvent, err = cl.signConsentRequest(*event); err != nil {
 		errorMsg := fmt.Sprintf("could not sign request %v", err)
+		event.Name = events.EventErrored
 		event.Error = &errorMsg
-		_ = cl.EventPublisher.Publish(events.ChannelConsentErrored, *event)
+		_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
 	}
 	newEvent.Name = events.EventAttachmentSigned
 	_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *newEvent)
