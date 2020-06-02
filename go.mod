@@ -11,7 +11,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/lestrrat-go/jwx v0.9.2
-	github.com/nuts-foundation/consent-bridge-go-client v0.13.0
+	github.com/nuts-foundation/consent-bridge-go-client v0.13.1-0.20200602135515-727ff3aaee27
 	github.com/nuts-foundation/nuts-consent-store v0.13.1-0.20200423143803-fb6e56b18a57
 	github.com/nuts-foundation/nuts-crypto v0.13.2-0.20200423143655-6c1f70c227f5
 	github.com/nuts-foundation/nuts-event-octopus v0.13.1-0.20200430091012-60e34b1803a9
