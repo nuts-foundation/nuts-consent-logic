@@ -30,6 +30,7 @@ import (
 	"time"
 
 	core "github.com/nuts-foundation/nuts-go-core"
+	"github.com/thedevsaddam/gojsonq/v2"
 
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
 	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
@@ -43,7 +44,6 @@ import (
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
-	"github.com/thedevsaddam/gojsonq/v2"
 )
 
 type ConsentLogicConfig struct {
@@ -345,6 +345,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
 			_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+			return
 		}
 
 		// publish EventConsentRequestValid
