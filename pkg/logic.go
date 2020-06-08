@@ -218,7 +218,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	crs := bridgeClient.FullConsentRequestState{}
 	decodedPayload, err := base64.StdEncoding.DecodeString(event.Payload)
 	if err != nil {
-		errorDescription := "Could not base64 decode event payload"
+		errorDescription := fmt.Sprintf("%s: could not base64 decode event payload", identity())
 		event.Error = &errorDescription
 		event.Name = events.EventErrored
 		logger().WithError(err).Error(errorDescription)
@@ -226,7 +226,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 	}
 	if err := json.Unmarshal(decodedPayload, &crs); err != nil {
 		// have event-octopus handle redelivery or cancellation
-		errorDescription := "Could not unmarshall event payload"
+		errorDescription := fmt.Sprintf("%s: could not unmarshall event payload", identity())
 		event.Error = &errorDescription
 		event.Name = events.EventErrored
 		logger().WithError(err).Error(errorDescription)
@@ -263,7 +263,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 
 					jwkFromSig, err := crypto.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
 					if err != nil {
-						errorMsg := fmt.Sprintf("Unable to parse signature public key as JWK: %v", err)
+						errorMsg := fmt.Sprintf("%s: unable to parse signature public key as JWK: %v", identity(), err)
 						logger().Warn(errorMsg)
 						logger().Debugf("publicKey from signature: %s ", signature.Signature.PublicKey)
 						event.Name = events.EventErrored
@@ -283,7 +283,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					orgHasKey, err := legalEntity.HasKey(jwkFromSig, checkTime)
 					// Fixme: this error handling should be rewritten
 					if err != nil {
-						errorMsg := fmt.Sprintf("Could not check JWK against organization keys: %v", err)
+						errorMsg := fmt.Sprintf("%s: could not check JWK against organization keys: %v", identity(), err)
 						logger().Warn(errorMsg)
 						event.Name = events.EventErrored
 						event.Error = &errorMsg
@@ -292,7 +292,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 					}
 
 					if !orgHasKey {
-						errorMsg := fmt.Sprintf("Organization %s did not have a valid signature for the corresponding public key at the given time %s", legalEntityID, checkTime.String())
+						errorMsg := fmt.Sprintf("%s:  organization %s did not have a valid signature for the corresponding public key at the given time %s", core.NutsConfig().Identity(), legalEntityID, checkTime.String())
 						logger().Warn(errorMsg)
 						event.Name = events.EventErrored
 						event.Error = &errorMsg
@@ -329,7 +329,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		// =======
 		fhirConsent, err := cl.decryptConsentRecord(cr, legalEntityToSignFor)
 		if err != nil {
-			errorDescription := "Could not decrypt consent record"
+			errorDescription := fmt.Sprintf("%s: could not decrypt consent record", identity())
 			event.Name = events.EventErrored
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
@@ -340,7 +340,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 		// validate consent record
 		// =======================
 		if validationResult, err := cl.validateFhirConsentResource(fhirConsent); !validationResult || err != nil {
-			errorDescription := "Consent record invalid"
+			errorDescription := fmt.Sprintf("%s: consent record invalid", identity())
 			event.Name = events.EventErrored
 			event.Error = &errorDescription
 			logger().WithError(err).Error(errorDescription)
@@ -362,7 +362,7 @@ func (cl ConsentLogic) HandleEventConsentRequestAcked(event *events.Event) {
 	var err error
 
 	if newEvent, err = cl.signConsentRequest(*event); err != nil {
-		errorMsg := fmt.Sprintf("could not sign request %v", err)
+		errorMsg := fmt.Sprintf("%s: could not sign request %v", identity(), err)
 		event.Name = events.EventErrored
 		event.Error = &errorMsg
 		_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
@@ -673,4 +673,8 @@ func (cl *ConsentLogic) Start() error {
 func (ConsentLogic) Shutdown() error {
 	// Stub
 	return nil
+}
+
+func identity() string {
+	return core.NutsConfig().Identity()
 }
