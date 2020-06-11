@@ -42,6 +42,7 @@ import (
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-event-octopus/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
+	nutsgo "github.com/nuts-foundation/nuts-go-core"
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
@@ -384,6 +385,10 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 		t.Error("event does not contain a valid UUID", err)
 	}
 
+	assert.NotNil(t, crs.CreatedAt)
+	assert.NotNil(t, crs.UpdatedAt)
+	assert.Equal(t, api.Identifier(custodianID), crs.InitiatingLegalEntity)
+	assert.Equal(t, nutsgo.NutsConfig().Identity(), *crs.InitiatingNode)
 }
 
 func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
