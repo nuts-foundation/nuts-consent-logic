@@ -39,7 +39,7 @@ func (cl ConsentLogic) getConsentID(request CreateConsentRequest) (string, error
 	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
 
 	// todo refactor
-	id, err := cl.NutsCrypto.ExternalIdFor(string(subject), string(request.Actor), legalEntity)
+	id, err := cl.NutsCrypto.CalculateExternalId(string(subject), string(request.Actor), cryptoTypes.KeyForEntity(legalEntity))
 	if err != nil {
 		return "", err
 	}
@@ -90,14 +90,14 @@ func (cl ConsentLogic) encryptFhirConsent(fhirConsent string, request CreateCons
 	partyKeys = append(partyKeys, jwk)
 
 	// and custodian
-	jwk, err = cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: string(request.Custodian)})
+	jwk, err = cl.NutsCrypto.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(request.Custodian)}))
 	if err != nil {
 		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
 	partyKeys = append(partyKeys, jwk)
 
-	return cl.NutsCrypto.EncryptKeyAndPlainTextWith([]byte(fhirConsent), partyKeys)
+	return cl.NutsCrypto.EncryptKeyAndPlainText([]byte(fhirConsent), partyKeys)
 }
 
 func valueFromUrn(urn string) string {

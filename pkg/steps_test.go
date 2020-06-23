@@ -31,6 +31,7 @@ import (
 	cStoreMock "github.com/nuts-foundation/nuts-consent-store/mock"
 	cStoreTypes "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
 	"github.com/nuts-foundation/nuts-registry/mock"
@@ -173,9 +174,9 @@ func TestEncryptFhirConsent(t *testing.T) {
 	partyID := "agb:00000002"
 
 	cryptoClient := crypto.NewCryptoClient()
-	_ = cryptoClient.GenerateKeyPairFor(cryptoTypes.LegalEntity{URI: custodianID})
-	publicKey, _ := cryptoClient.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: custodianID})
-	jwkMap, _ := crypto.JwkToMap(publicKey)
+	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
+	publicKey, _ := cryptoClient.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
+	jwkMap, _ := cert.JwkToMap(publicKey)
 	jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
 
 	t.Run("it should encrypt the consent resource", func(tt *testing.T) {
@@ -200,11 +201,11 @@ func TestEncryptFhirConsent(t *testing.T) {
 			return
 		}
 		// decrypt the content for the custodian and compare
-		result, err := cryptoClient.DecryptKeyAndCipherTextFor(cryptoTypes.DoubleEncryptedCipherText{
+		result, err := cryptoClient.DecryptKeyAndCipherText(cryptoTypes.DoubleEncryptedCipherText{
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, cryptoTypes.LegalEntity{URI: custodianID})
+		}, cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}
@@ -235,7 +236,7 @@ func TestGetConsentId(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			cClient := crypto.NewCryptoClient()
-			_ = cClient.GenerateKeyPairFor(types.LegalEntity{URI: string(tt.args.request.Custodian)})
+			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: string(tt.args.request.Custodian)}))
 
 			got, err := ConsentLogic{
 				NutsCrypto: cClient,

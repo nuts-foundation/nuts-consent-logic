@@ -37,9 +37,10 @@ import (
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
 	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
 	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
-	mock2 "github.com/nuts-foundation/nuts-crypto/mock"
 	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
+	mock2 "github.com/nuts-foundation/nuts-crypto/test/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
 	nutsgo "github.com/nuts-foundation/nuts-go-core"
@@ -226,7 +227,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000001"})
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000001"}))
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
@@ -250,7 +251,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000002"})
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"}))
 		defer ctrl.Finish()
 		foo := "foo"
 		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
@@ -297,14 +298,14 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		// two parties involved in this transaction
 		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
 		// 00000002 is managed by this node
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "urn:agb:00000002"}).Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"})).Return(true)
 
 		// expect to receive a decrypt call for 00000002
 		validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 		if err != nil {
 			t.Error(err)
 		}
-		cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: "urn:agb:00000002"}).Return(validConsent, nil)
+		cryptoMock.EXPECT().DecryptKeyAndCipherText(gomock.Any(), types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"})).Return(validConsent, nil)
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -337,7 +338,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 
 	cryptoClient := pkg2.NewCryptoClient()
 
-	_ = cryptoClient.GenerateKeyPairFor(types.LegalEntity{URI: custodianID})
+	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID}))
 
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)
@@ -404,9 +405,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(false)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(true)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(false)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000001"})).AnyTimes().Return(false)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000002"})).AnyTimes().Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000003"})).AnyTimes().Return(false)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -421,9 +422,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(false)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(true)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000001"})).AnyTimes().Return(false)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000002"})).AnyTimes().Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000003"})).AnyTimes().Return(true)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -437,9 +438,9 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000001"}).AnyTimes().Return(true)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000002"}).AnyTimes().Return(false)
-		cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: "00000003"}).AnyTimes().Return(false)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000001"})).AnyTimes().Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000002"})).AnyTimes().Return(false)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "00000003"})).AnyTimes().Return(false)
 
 		cl := ConsentLogic{NutsCrypto: cryptoMock}
 		if !cl.isRelevantForThisNode(allRules[0]) {
@@ -462,9 +463,9 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	cryptoMock := mock2.NewMockClient(ctrl)
 	privkey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	jwk, _ := jwk.New(&privkey.PublicKey)
-	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: legalEntity}).AnyTimes().Return(true)
-	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: legalEntity}).AnyTimes().Return(jwk, nil)
-	cryptoMock.EXPECT().SignFor(hexEncodedHash, gomock.Eq(types.LegalEntity{URI: legalEntity})).Return([]byte("signedBytes"), nil)
+	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: legalEntity})).AnyTimes().Return(true)
+	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: legalEntity})).AnyTimes().Return(jwk, nil)
+	cryptoMock.EXPECT().Sign(hexEncodedHash, gomock.Eq(types.KeyForEntity(types.LegalEntity{URI: legalEntity}))).Return([]byte("signedBytes"), nil)
 
 	// prepare method parameter
 	event := pkg.Event{}
@@ -597,17 +598,17 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		cl := &ConsentLogic{NutsCrypto: cryptoMock, NutsConsentStore: consentStoreMock, EventPublisher: publisherMock}
 
 		for _, org := range allOrgs {
-			cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: org}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+			cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
 		}
 
 		t.Run(tName, func(t *testing.T) {
 			for _, org := range orgs {
-				cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: org}).AnyTimes().Return(true)
-				cryptoMock.EXPECT().DecryptKeyAndCipherTextFor(gomock.Any(), types.LegalEntity{URI: org}).AnyTimes().Return(validConsent, nil)
+				cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(true)
+				cryptoMock.EXPECT().DecryptKeyAndCipherText(gomock.Any(), types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(validConsent, nil)
 			}
 			for _, org := range allOrgs {
 				// already set mocks are not overriden
-				cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: org}).AnyTimes().Return(false)
+				cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(false)
 			}
 
 			cl.HandleEventConsentDistributed(event)
@@ -641,10 +642,10 @@ kQIDAQAB
 	custodianAGB := "urn:agb:00000001"
 	actorAGB := "urn:agb:00000002"
 
-	cryptoMock.EXPECT().PublicKeyInJWK(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
-	cryptoMock.EXPECT().KeyExistsFor(types.LegalEntity{URI: custodianAGB}).AnyTimes().Return(true)
-	cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
-	cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
+	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: custodianAGB})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: custodianAGB})).AnyTimes().Return(true)
+	cryptoMock.EXPECT().CalculateExternalId(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
+	cryptoMock.EXPECT().EncryptKeyAndPlainText(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
 	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(getOrganization(validPublicKey), nil)
 
 	createConsentRequest := &CreateConsentRequest{
@@ -672,7 +673,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 		{
 			keyAsString, ok := key.(string)
 			if ok {
-				keyAsJWK, _ = pkg2.PemToJwk([]byte(keyAsString))
+				keyAsJWK, _ = cert.PemToJwk([]byte(keyAsString))
 				if keyAsJWK == nil {
 					var asMap map[string]interface{}
 					err := json.Unmarshal([]byte(keyAsString), &asMap)
@@ -685,7 +686,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 		{
 			keyAsMap2, ok := key.(map[string]interface{})
 			if ok {
-				keyAsJWK, err = pkg2.MapToJwk(keyAsMap2)
+				keyAsJWK, err = cert.MapToJwk(keyAsMap2)
 				if err != nil {
 					panic(err)
 				}
@@ -697,7 +698,7 @@ func getOrganization(keys ...interface{}) *db.Organization {
 				keyAsJWK, _ = jwk.New(keyAsPubKey)
 			}
 		}
-		keyAsMap, _ := pkg2.JwkToMap(keyAsJWK)
+		keyAsMap, _ := cert.JwkToMap(keyAsJWK)
 		keyAsMap["kty"] = keyAsJWK.KeyType().String()
 		o.Keys = append(o.Keys, keyAsMap)
 	}

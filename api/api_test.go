@@ -31,9 +31,10 @@ import (
 	"github.com/lestrrat-go/jwx/jwa"
 	"github.com/lestrrat-go/jwx/jwk"
 	"github.com/nuts-foundation/nuts-consent-logic/pkg"
-	cryptomock "github.com/nuts-foundation/nuts-crypto/mock"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
+	cryptomock "github.com/nuts-foundation/nuts-crypto/test/mock"
 	mock2 "github.com/nuts-foundation/nuts-event-octopus/mock"
 	pkg2 "github.com/nuts-foundation/nuts-event-octopus/pkg"
 	registrymock "github.com/nuts-foundation/nuts-registry/mock"
@@ -93,13 +94,13 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		octoMock := mock2.NewMockEventOctopusClient(ctrl)
 		sk, _ := rsa.GenerateKey(rand.Reader, 1024)
 		publicKey, _ := jwk.New(sk.Public())
-		jwkMap, _ := crypto.JwkToMap(publicKey)
+		jwkMap, _ := cert.JwkToMap(publicKey)
 		jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
 		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil).Times(2)
-		cryptoMock.EXPECT().PublicKeyInJWK(gomock.Any()).Return(publicKey, nil).AnyTimes()
-		cryptoMock.EXPECT().KeyExistsFor(gomock.Any()).Return(true).AnyTimes()
-		cryptoMock.EXPECT().ExternalIdFor(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
-		cryptoMock.EXPECT().EncryptKeyAndPlainTextWith(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
+		cryptoMock.EXPECT().GetPublicKeyAsJWK(gomock.Any()).Return(publicKey, nil).AnyTimes()
+		cryptoMock.EXPECT().PrivateKeyExists(gomock.Any()).Return(true).AnyTimes()
+		cryptoMock.EXPECT().CalculateExternalId(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
+		cryptoMock.EXPECT().EncryptKeyAndPlainText(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil).Times(2)
 		octoMock.EXPECT().EventPublisher(gomock.Any()).Return(&EventPublisherMock{}, nil)
 
 		apiWrapper := wrapper(registryMock, cryptoMock, octoMock)

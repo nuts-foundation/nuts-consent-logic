@@ -29,6 +29,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	core "github.com/nuts-foundation/nuts-go-core"
 	"github.com/thedevsaddam/gojsonq/v2"
 
@@ -110,7 +111,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	}
 
 	{
-		if !cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(createConsentRequest.Custodian)}) {
+		if !cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(createConsentRequest.Custodian)})) {
 			return nil, errors.New("custodian is not a known organization (no private key found on this node)")
 		}
 		logger().Debug("Custodian is known")
@@ -268,7 +269,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						return
 					}
 
-					jwkFromSig, err := crypto.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
+					jwkFromSig, err := cert.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
 					if err != nil {
 						errorMsg := fmt.Sprintf("%s: unable to parse signature public key as JWK: %v", identity(), err)
 						logger().Warn(errorMsg)
@@ -408,13 +409,13 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 		consentRecordHash := *cr.AttachmentHash
 		logger().Debugf("signing for LegalEntity %s and consentRecordHash %s", legalEntityToSignFor, consentRecordHash)
 
-		pubKey, err := cl.NutsCrypto.PublicKeyInJWK(cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+		pubKey, err := cl.NutsCrypto.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: legalEntityToSignFor}))
 		if err != nil {
 			logger().Errorf("Error in getting pubKey for %s: %v", legalEntityToSignFor, err)
 			return nil, err
 		}
 
-		jwk, err := crypto.JwkToMap(pubKey)
+		jwk, err := cert.JwkToMap(pubKey)
 		if err != nil {
 			logger().Errorf("Error in transforming pubKey for %s: %v", legalEntityToSignFor, err)
 			return nil, err
@@ -424,7 +425,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 			logger().Errorf("Could not decode consentRecordHash into hex value %s: %v", consentRecordHash, err)
 			return nil, err
 		}
-		sigBytes, err := cl.NutsCrypto.SignFor(hexConsentRecordHash, cryptoTypes.LegalEntity{URI: legalEntityToSignFor})
+		sigBytes, err := cl.NutsCrypto.Sign(hexConsentRecordHash, cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: legalEntityToSignFor}))
 		if err != nil {
 			errorDescription := fmt.Sprintf("Could not sign consent record for %s, err: %v", legalEntityToSignFor, err)
 			event.Error = &errorDescription
@@ -489,7 +490,7 @@ func (cl ConsentLogic) decryptConsentRecord(cr bridgeClient.ConsentRecord, legal
 		CipherTextKeys: [][]byte{legalEntityKey},
 		Nonce:          nonce,
 	}
-	consentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherTextFor(dect, cryptoTypes.LegalEntity{URI: legalEntity})
+	consentRecord, err := cl.NutsCrypto.DecryptKeyAndCipherText(dect, cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: legalEntity}))
 	if err != nil {
 		logger().WithError(err).Error("Could not decrypt consent record")
 		return "", err
@@ -518,7 +519,7 @@ func (cl ConsentLogic) findFirstEntityToSignFor(signatures *[]bridgeClient.Party
 		// ... check if it has already signed the request
 		if !attSignatures[string(ent)] {
 			// if not, check if this node has any keys
-			if cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(ent)}) {
+			if cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(ent)})) {
 				// yes, so lets add it to the missingSignatures so we can sign it in the next step
 				logger().Debugf("found first entity to sign for: %v", ent)
 				return string(ent)
@@ -569,7 +570,7 @@ func (cl ConsentLogic) HandleEventConsentDistributed(event *events.Event) {
 
 	for _, cr := range crs.ConsentRecords {
 		for _, organisation := range cr.Metadata.OrganisationSecureKeys {
-			if !cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)}) {
+			if !cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(organisation.LegalEntity)})) {
 				// this organisation is not managed by this node, try with next
 				continue
 			}
@@ -620,8 +621,8 @@ func hashFHIRConsent(fhirConsent string) string {
 // only consent records of which or the custodian or the actor is managed by this node should be stored
 func (cl ConsentLogic) isRelevantForThisNode(patientConsent cStore.PatientConsent) bool {
 	// add if custodian is managed by this node
-	return cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: patientConsent.Custodian}) ||
-		cl.NutsCrypto.KeyExistsFor(cryptoTypes.LegalEntity{URI: patientConsent.Actor})
+	return cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: patientConsent.Custodian})) ||
+		cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: patientConsent.Actor}))
 }
 
 // PatientConsentFromFHIRRecord extracts the PatientConsent from a FHIR consent record encoded as json string.
