@@ -6,9 +6,9 @@
   :target: https://codecov.io/gh/nuts-foundation/nuts-consent-logic
   :alt: Test Coverage
 
-.. image:: https://api.codacy.com/project/badge/Grade/61229c5d20f443f4b7f821430ef63cc2
-  :target: https://www.codacy.com/app/nuts-foundation/nuts-consent-logic?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=nuts-foundation/nuts-consent-logic&amp;utm_campaign=Badge_Grade
-  :alt: Codacy Report
+.. image:: https://api.codeclimate.com/v1/badges/e707419a34234ca52987/maintainability
+   :target: https://codeclimate.com/github/nuts-foundation/nuts-consent-logic/maintainability
+   :alt: Maintainability
 
 Nuts Consent Logic
 ==================
