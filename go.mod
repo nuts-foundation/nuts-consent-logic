@@ -3,7 +3,7 @@ module github.com/nuts-foundation/nuts-consent-logic
 go 1.13
 
 require (
-	github.com/cbroglie/mustache v1.1.0
+	github.com/cbroglie/mustache v1.2.0
 	github.com/golang/mock v1.4.3
 	github.com/hashicorp/go-hclog v0.9.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
@@ -19,7 +19,7 @@ require (
 	github.com/nuts-foundation/nuts-registry v0.13.3-0.20200623065823-8b2b8a223615
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.6.0
-	github.com/spf13/cobra v0.0.7
+	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
