@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/nuts-foundation/nuts-crypto/client"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -30,7 +31,6 @@ import (
 	"github.com/lestrrat-go/jwx/jwa"
 	cStoreMock "github.com/nuts-foundation/nuts-consent-store/mock"
 	cStoreTypes "github.com/nuts-foundation/nuts-consent-store/pkg"
-	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
@@ -173,7 +173,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 	custodianID := "agb:00000001"
 	partyID := "agb:00000002"
 
-	cryptoClient := crypto.NewCryptoClient()
+	cryptoClient := client.NewCryptoClient()
 	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
 	publicKey, _ := cryptoClient.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
 	jwkMap, _ := cert.JwkToMap(publicKey)
@@ -235,7 +235,7 @@ func TestGetConsentId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			cClient := crypto.NewCryptoClient()
+			cClient := client.NewCryptoClient()
 			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: string(tt.args.request.Custodian)}))
 
 			got, err := ConsentLogic{
