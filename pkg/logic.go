@@ -26,6 +26,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	cryptoClient "github.com/nuts-foundation/nuts-crypto/client"
 	"sync"
 	"time"
 
@@ -650,7 +651,7 @@ func (ConsentLogic) Configure() error {
 // Start starts a new ConsentLogic engine. It populates the ConsentLogic struct with client from other engines and
 // subscribes to nats.io event.
 func (cl *ConsentLogic) Start() error {
-	cl.NutsCrypto = crypto.NewCryptoClient()
+	cl.NutsCrypto = cryptoClient.NewCryptoClient()
 	cl.NutsRegistry = registryClient.NewRegistryClient()
 	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
 	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()

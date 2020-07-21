@@ -28,6 +28,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"github.com/nuts-foundation/nuts-crypto/client"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -37,7 +38,6 @@ import (
 	"github.com/nuts-foundation/consent-bridge-go-client/api"
 	mock4 "github.com/nuts-foundation/nuts-consent-store/mock"
 	pkg3 "github.com/nuts-foundation/nuts-consent-store/pkg"
-	pkg2 "github.com/nuts-foundation/nuts-crypto/pkg"
 	"github.com/nuts-foundation/nuts-crypto/pkg/cert"
 	"github.com/nuts-foundation/nuts-crypto/pkg/types"
 	mock2 "github.com/nuts-foundation/nuts-crypto/test/mock"
@@ -336,7 +336,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	party1ID := "agb:00000002"
 	performerID := "agb:00000007"
 
-	cryptoClient := pkg2.NewCryptoClient()
+	cryptoClient := client.NewCryptoClient()
 
 	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID}))
 
