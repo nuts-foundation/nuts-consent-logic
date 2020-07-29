@@ -5,7 +5,7 @@ go 1.13
 require (
 	github.com/cbroglie/mustache v1.2.0
 	github.com/gibson042/canonicaljson-go v1.0.3 // indirect
-	github.com/golang/mock v1.4.3
+	github.com/golang/mock v1.4.4
 	github.com/hashicorp/go-hclog v0.9.2 // indirect
 	github.com/hashicorp/go-immutable-radix v1.1.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
