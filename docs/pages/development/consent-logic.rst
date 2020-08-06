@@ -1,21 +1,9 @@
-Nuts Consent Logic Service
-##################
+.. _nuts-consent-logic-development:
 
-.. image:: https://circleci.com/gh/nuts-foundation/nuts-consent-logic.svg?style=svg
-    :target: https://circleci.com/gh/nuts-foundation/nuts-consent-logic
-    :alt: Build Status
+Nuts Consent Logic development
+#####################
 
-.. image:: https://codecov.io/gh/nuts-foundation/nuts-proxy/branch/master/graph/badge.svg
-    :target: https://codecov.io/gh/nuts-foundation/nuts-consent-logic
-    :alt: Test coverage
-
-.. image:: https://godoc.org/github.com/nuts-foundation/nuts-consent-logic?status.svg
-    :target: https://godoc.org/github.com/nuts-foundation/nuts-consent-logic
-    :alt: GoDoc
-
-.. image:: https://api.codeclimate.com/v1/badges/a96e5a12e2fcc618a525/maintainability
-   :target: https://codeclimate.com/github/nuts-foundation/nuts-consent-logic/maintainability
-   :alt: Maintainability
+.. marker-for-readme
 
 This module is written in Go and should be part of nuts-go as an engine.
 
@@ -63,4 +51,3 @@ The documentation can be build by running
     /docs $ make html
 
 The resulting html will be available from ``docs/_build/html/index.html``
-

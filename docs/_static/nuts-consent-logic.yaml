@@ -77,17 +77,12 @@ components:
         - records
       properties:
         subject:
-          $ref: "#/components/schemas/SubjectURI"
+          $ref: "#/components/schemas/IdentifierURI"
         custodian:
-          $ref: "#/components/schemas/CustodianURI"
+          $ref: "#/components/schemas/IdentifierURI"
         actor:
-          $ref: "#/components/schemas/ActorURI"
+          $ref: "#/components/schemas/IdentifierURI"
         performer:
-          description: >
-            A cryptographic identity of the performer, the
-            person who administers the consent. This field
-            is optional. If no performer can be identified
-            the consentProof field is mandatory.
           $ref: "#/components/schemas/IdentifierURI"
         records:
           type: array
@@ -132,20 +127,11 @@ components:
           description: base64 encoded sha256 of the document
     IdentifierURI:
       type: string
-      description: "URI defining a party such as a person or organization"
-      example: "urn:oid:2.16.840.1.113883.2.4.6.1:#00000007"
-    ActorURI:
-      type: string
-      description: "URI defining the actor, usually a practitioner"
-      example: "urn:oid:2.16.840.1.113883.2.4.6.1:00000007"
-    CustodianURI:
-      type: string
-      description: "URI defining an organization, usually the custodian or actor"
-      example: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000"
-    SubjectURI:
-      type: string
-      description: "URI defining the data subject, usually the patient"
-      example: "urn:oid:2.16.840.1.113883.2.4.6.3:999999990"
+      description: >
+        URI identifying an entity (e.g. an organization, person or system) as an URN encoded as OID followed
+        by its value. Please see https://nuts-documentation.readthedocs.io/en/latest/pages/technical/identifiers.html
+        for which OIDs to use.
+      example: "urn:oid:1.2.3.4:56789"
     DataClassification:
       type: string
       description: 'Nuts classification system identifier'

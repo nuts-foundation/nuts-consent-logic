@@ -87,9 +87,7 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		}
 	}
 
-	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
-
-	eventUUID, err := wrapper.Cl.StartConsentFlow(createConsentRequest)
+	eventUUID, err := wrapper.Cl.StartConsentFlow(apiRequest2Internal(*createConsentApiRequest))
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
@@ -103,15 +101,10 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 // This abstraction makes the app more robust to api changes.
 func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequest {
 	createConsentRequest := &pkg.CreateConsentRequest{
-		Custodian: pkg.IdentifierURI(apiRequest.Custodian),
-		Subject:   pkg.IdentifierURI(apiRequest.Subject),
-		Actor:     pkg.IdentifierURI(apiRequest.Actor),
-	}
-
-	var performer pkg.IdentifierURI
-	if apiRequest.Performer != nil {
-		performer = pkg.IdentifierURI(*apiRequest.Performer)
-		createConsentRequest.Performer = &performer
+		Custodian: apiRequest.Custodian.PartyID(),
+		Actor:     apiRequest.Actor.PartyID(),
+		Subject:   apiRequest.Subject.PartyID(),
+		Performer: apiRequest.Performer.PartyID(),
 	}
 
 	for _, record := range apiRequest.Records {
@@ -131,11 +124,10 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 		newRecord.ConsentProof = consentProof
 
 		for _, dc := range record.DataClass {
-			newRecord.DataClass = append(newRecord.DataClass, pkg.IdentifierURI(dc))
+			newRecord.DataClass = append(newRecord.DataClass, string(dc))
 		}
 
 		createConsentRequest.Records = append(createConsentRequest.Records, newRecord)
 	}
-
 	return createConsentRequest
 }
