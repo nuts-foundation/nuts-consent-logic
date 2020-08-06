@@ -260,8 +260,16 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 			for _, cr := range crs.ConsentRecords {
 				for _, signature := range *cr.Signatures {
 					// Get the published public key from register
-					legalEntityID := signature.LegalEntity
-					legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
+					legalEntityID, err := core.ParsePartyID(string(signature.LegalEntity))
+					if err != nil {
+						errorMsg := fmt.Sprintf("Invalid LegalEntity on signature: %s, err: %v", signature.LegalEntity, err)
+						event.Name = events.EventErrored
+						event.Error = &errorMsg
+						logger().Warn(errorMsg)
+						_ = cl.EventPublisher.Publish(events.ChannelConsentRequest, *event)
+						return
+					}
+					legalEntity, err := cl.NutsRegistry.OrganizationById(legalEntityID)
 					if err != nil {
 						errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityID, err)
 						event.Error = &errorMsg

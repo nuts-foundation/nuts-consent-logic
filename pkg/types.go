@@ -19,14 +19,15 @@
 package pkg
 
 import (
+	core "github.com/nuts-foundation/nuts-go-core"
 	"time"
 )
 
 type CreateConsentRequest struct {
-	Actor     IdentifierURI
-	Custodian IdentifierURI
-	Subject   IdentifierURI
-	Performer *IdentifierURI
+	Actor     core.PartyID
+	Custodian core.PartyID
+	Subject   core.PartyID
+	Performer core.PartyID
 	Records   []Record
 }
 

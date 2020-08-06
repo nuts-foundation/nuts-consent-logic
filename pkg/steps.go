@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	core "github.com/nuts-foundation/nuts-go-core"
 	"regexp"
 	"strings"
 	"time"
@@ -36,10 +37,10 @@ import (
 // getConsentID returns the consentId corresponding to the combinations of the subject and the custodian
 func (cl ConsentLogic) getConsentID(request CreateConsentRequest) (string, error) {
 	subject := request.Subject
-	legalEntity := cryptoTypes.LegalEntity{URI: string(request.Custodian)}
+	legalEntity := cryptoTypes.LegalEntity{URI: request.Custodian.String()}
 
 	// todo refactor
-	id, err := cl.NutsCrypto.CalculateExternalId(string(subject), string(request.Actor), cryptoTypes.KeyForEntity(legalEntity))
+	id, err := cl.NutsCrypto.CalculateExternalId(subject.String(), request.Actor.String(), cryptoTypes.KeyForEntity(legalEntity))
 	if err != nil {
 		return "", err
 	}
@@ -76,9 +77,9 @@ func (cl ConsentLogic) encryptFhirConsent(fhirConsent string, request CreateCons
 	var partyKeys []jwk.Key
 
 	// get public key for actor
-	organization, err := cl.NutsRegistry.OrganizationById(string(request.Actor))
+	organization, err := cl.NutsRegistry.OrganizationById(request.Actor)
 	if err != nil {
-		logger().Errorf("error while getting public key for actor: %v from registry: %v", request.Actor, err)
+		logger().Errorf("error while getting public key for actor: %s from registry: %v", request.Actor, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
 	}
 
@@ -90,7 +91,7 @@ func (cl ConsentLogic) encryptFhirConsent(fhirConsent string, request CreateCons
 	partyKeys = append(partyKeys, jwk)
 
 	// and custodian
-	jwk, err = cl.NutsCrypto.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(request.Custodian)}))
+	jwk, err = cl.NutsCrypto.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: request.Custodian.String()}))
 	if err != nil {
 		logger().Errorf("error while getting public key for custodian: %v from crypto: %v", request.Custodian, err)
 		return cryptoTypes.DoubleEncryptedCipherText{}, err
@@ -100,20 +101,14 @@ func (cl ConsentLogic) encryptFhirConsent(fhirConsent string, request CreateCons
 	return cl.NutsCrypto.EncryptKeyAndPlainText([]byte(fhirConsent), partyKeys)
 }
 
-func valueFromUrn(urn string) string {
-	segments := strings.Split(urn, ":")
-	return segments[len(segments)-1]
-}
-
-func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, performer IdentifierURI, record Record) (string, error) {
-
+func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, performer core.PartyID, record Record) (string, error) {
 	var (
 		actorAgbs []string
 		err       error
 		versionID uint
 		res       string
 	)
-	actorAgbs = append(actorAgbs, valueFromUrn(string(actor)))
+	actorAgbs = append(actorAgbs, actor.Value())
 
 	if versionID, err = cl.getVersionID(record); versionID == 0 || err != nil {
 		err = fmt.Errorf("could not determine versionId: %w", err)
@@ -123,9 +118,9 @@ func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, perf
 
 	dataClasses := make([]map[string]string, len(record.DataClass))
 	viewModel := map[string]interface{}{
-		"subjectBsn":   valueFromUrn(string(subject)),
+		"subjectBsn":   subject.Value(),
 		"actorAgbs":    actorAgbs,
-		"custodianAgb": valueFromUrn(string(custodian)),
+		"custodianAgb": custodian.Value(),
 		"period": map[string]string{
 			"Start": record.Period.Start.Format(time.RFC3339),
 		},
@@ -147,8 +142,8 @@ func (cl ConsentLogic) createFhirConsentResource(custodian, actor, subject, perf
 		viewModel["consentProof"] = derefPointers(record.ConsentProof)
 	}
 
-	if performer != "" {
-		viewModel["performerId"] = valueFromUrn(string(performer))
+	if !performer.IsZero() {
+		viewModel["performerId"] = performer.Value()
 	}
 
 	periodEnd := record.Period.End

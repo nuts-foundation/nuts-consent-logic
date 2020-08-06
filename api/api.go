@@ -87,7 +87,10 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 		}
 	}
 
-	createConsentRequest := apiRequest2Internal(*createConsentApiRequest)
+	createConsentRequest, err := apiRequest2Internal(*createConsentApiRequest)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 
 	eventUUID, err := wrapper.Cl.StartConsentFlow(createConsentRequest)
 	if err != nil {
@@ -101,17 +104,31 @@ func (wrapper Wrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 
 // Convert the public generated data type to the internal type.
 // This abstraction makes the app more robust to api changes.
-func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequest {
-	createConsentRequest := &pkg.CreateConsentRequest{
-		Custodian: pkg.IdentifierURI(apiRequest.Custodian),
-		Subject:   pkg.IdentifierURI(apiRequest.Subject),
-		Actor:     pkg.IdentifierURI(apiRequest.Actor),
+func apiRequest2Internal(apiRequest CreateConsentRequest) (*pkg.CreateConsentRequest, error) {
+	custodian, err := core.ParsePartyID(string(apiRequest.Custodian))
+	if err != nil {
+		return nil, fmt.Errorf("invalid custodian identifier: %s: %w", apiRequest.Custodian, err)
 	}
-
-	var performer pkg.IdentifierURI
+	actor, err := core.ParsePartyID(string(apiRequest.Actor))
+	if err != nil {
+		return nil, fmt.Errorf("invalid actor identifier: %s: %w", apiRequest.Actor, err)
+	}
+	subject, err := core.ParsePartyID(string(apiRequest.Subject))
+	if err != nil {
+		return nil, fmt.Errorf("invalid subject identifier: %s: %w", apiRequest.Subject, err)
+	}
+	var performer core.PartyID
 	if apiRequest.Performer != nil {
-		performer = pkg.IdentifierURI(*apiRequest.Performer)
-		createConsentRequest.Performer = &performer
+		performer, err = core.ParsePartyID(string(*apiRequest.Performer))
+		if err != nil {
+			return nil, fmt.Errorf("invalid performer identifier: %s: %w", *apiRequest.Performer, err)
+		}
+	}
+	createConsentRequest := &pkg.CreateConsentRequest{
+		Custodian: custodian,
+		Actor:     actor,
+		Subject:   subject,
+		Performer: performer,
 	}
 
 	for _, record := range apiRequest.Records {
@@ -137,5 +154,5 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 		createConsentRequest.Records = append(createConsentRequest.Records, newRecord)
 	}
 
-	return createConsentRequest
+	return createConsentRequest, nil
 }
