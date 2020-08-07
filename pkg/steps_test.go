@@ -22,7 +22,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/nuts-foundation/nuts-crypto/client"
+	"github.com/nuts-foundation/nuts-consent-logic/test"
+	"github.com/nuts-foundation/nuts-go-test/io"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -95,7 +96,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 		t.Error(err)
 	}
 
-	performerId := IdentifierURI("urn:oid:2.16.840.1.113883.2.4.6.1:00000003")
+	performer := test.AGBPartyID("00000003")
 	url := "https://some.url/reference.pdf"
 	contentType := "application/pdf"
 	hash := "hash"
@@ -112,11 +113,9 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			"it can create a valid consent",
 			args{
 				CreateConsentRequest{
-					Subject:   "urn:oidurn:oid:2.16.840.1.113883.2.4.6.3:999999990",
-					Custodian: "urn:oid:2.16.840.1.113883.2.4.6.1:00000000",
-					Actor: IdentifierURI(
-						"urn:oid:2.16.840.1.113883.2.4.6.1:00000001",
-					),
+					Subject:   test.BSNPartyID("999999990"),
+					Custodian: test.AGBPartyID("00000000"),
+					Actor: test.AGBPartyID("00000001"),
 					Records: []Record{{
 						Period: Period{
 							Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
@@ -129,12 +128,12 @@ func TestCreateFhirConsentResource(t *testing.T) {
 							ContentType: &contentType,
 							Hash:        &hash,
 						},
-						DataClass: []IdentifierURI{
-							IdentifierURI("urn:oid:1.3.6.1.4.1.54851.1:MEDICAL"),
-							IdentifierURI("urn:oid:1.3.6.1.4.1.54851.1:SOCIAL"),
+						DataClass: []string{
+							"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
+							"urn:oid:1.3.6.1.4.1.54851.1:SOCIAL",
 						},
 					}},
-					Performer: &performerId,
+					Performer: performer,
 				},
 			},
 			string(validConsent),
@@ -147,7 +146,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 			var o2 interface{}
 
 			_ = json.Unmarshal(validConsent, &o1)
-			got, err := ConsentLogic{}.createFhirConsentResource(tt.args.request.Custodian, tt.args.request.Actor, tt.args.request.Subject, *tt.args.request.Performer, tt.args.request.Records[0])
+			got, err := ConsentLogic{}.createFhirConsentResource(tt.args.request.Custodian, tt.args.request.Actor, tt.args.request.Subject, tt.args.request.Performer, tt.args.request.Records[0])
 			if err != nil {
 				t.Error(err)
 			}
@@ -170,12 +169,12 @@ func TestEncryptFhirConsent(t *testing.T) {
 		t.Error(err)
 	}
 
-	custodianID := "agb:00000001"
-	partyID := "agb:00000002"
+	custodianID := test.AGBPartyID("00000001")
+	partyID := test.AGBPartyID("00000002")
 
-	cryptoClient := client.NewCryptoClient()
-	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
-	publicKey, _ := cryptoClient.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
+	cryptoClient := createCrypto(io.TestDirectory(t))
+	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}))
+	publicKey, _ := cryptoClient.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}))
 	jwkMap, _ := cert.JwkToMap(publicKey)
 	jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
 
@@ -190,8 +189,8 @@ func TestEncryptFhirConsent(t *testing.T) {
 		registryClient.EXPECT().OrganizationById(gomock.Eq(partyID)).Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil)
 
 		request := CreateConsentRequest{
-			Actor:     IdentifierURI(partyID),
-			Custodian: IdentifierURI(custodianID),
+			Actor:     partyID,
+			Custodian: custodianID,
 		}
 
 		encryptedContent, err := cl.encryptFhirConsent(string(validConsent), request)
@@ -205,7 +204,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 			CipherText:     encryptedContent.CipherText,
 			CipherTextKeys: [][]byte{encryptedContent.CipherTextKeys[0]},
 			Nonce:          encryptedContent.Nonce,
-		}, cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID}))
+		}, cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}))
 		if err != nil {
 			t.Error("Error while decrypting text:", err)
 		}
@@ -219,6 +218,9 @@ func TestGetConsentId(t *testing.T) {
 	type args struct {
 		request CreateConsentRequest
 	}
+	custodian := test.AGBPartyID("12")
+	actor := test.AGBPartyID("actor")
+	subject := test.BSNPartyID("subject")
 	tests := []struct {
 		name    string
 		args    args
@@ -227,7 +229,7 @@ func TestGetConsentId(t *testing.T) {
 		{
 			"it generates a externalId",
 			args{
-				request: CreateConsentRequest{Custodian: "agb#00000012", Actor: IdentifierURI("actor"), Subject: IdentifierURI("subject")},
+				request: CreateConsentRequest{Custodian: custodian, Actor: actor, Subject: subject},
 			},
 			false,
 		},
@@ -235,8 +237,8 @@ func TestGetConsentId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			cClient := client.NewCryptoClient()
-			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: string(tt.args.request.Custodian)}))
+			cClient := createCrypto(io.TestDirectory(t))
+			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: tt.args.request.Custodian.String()}))
 
 			got, err := ConsentLogic{
 				NutsCrypto: cClient,

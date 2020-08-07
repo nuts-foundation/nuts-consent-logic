@@ -8,9 +8,6 @@ import (
 	"time"
 )
 
-// ActorURI defines model for ActorURI.
-type ActorURI string
-
 // ConsentRecord defines model for ConsentRecord.
 type ConsentRecord struct {
 	ConsentProof DocumentReference    `json:"consentProof"`
@@ -24,22 +21,19 @@ type ConsentRecord struct {
 // CreateConsentRequest defines model for CreateConsentRequest.
 type CreateConsentRequest struct {
 
-	// URI defining the actor, usually a practitioner
-	Actor ActorURI `json:"actor"`
+	// URI identitying an entity (organization or person). Can either be a: - Performer: The person who administers the consent (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Actor: Usually a practitioner (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Custodian: Usually the custodian or actor (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000000) - Subject: Usually the patient (e.g.: urn:oid:2.16.840.1.113883.2.4.6.3:999999990)
+	Actor IdentifierURI `json:"actor"`
 
-	// URI defining an organization, usually the custodian or actor
-	Custodian CustodianURI `json:"custodian"`
+	// URI identitying an entity (organization or person). Can either be a: - Performer: The person who administers the consent (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Actor: Usually a practitioner (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Custodian: Usually the custodian or actor (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000000) - Subject: Usually the patient (e.g.: urn:oid:2.16.840.1.113883.2.4.6.3:999999990)
+	Custodian IdentifierURI `json:"custodian"`
 
-	// URI defining a party such as a person or organization
+	// URI identitying an entity (organization or person). Can either be a: - Performer: The person who administers the consent (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Actor: Usually a practitioner (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Custodian: Usually the custodian or actor (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000000) - Subject: Usually the patient (e.g.: urn:oid:2.16.840.1.113883.2.4.6.3:999999990)
 	Performer *IdentifierURI  `json:"performer,omitempty"`
 	Records   []ConsentRecord `json:"records"`
 
-	// URI defining the data subject, usually the patient
-	Subject SubjectURI `json:"subject"`
+	// URI identitying an entity (organization or person). Can either be a: - Performer: The person who administers the consent (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Actor: Usually a practitioner (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000007) - Custodian: Usually the custodian or actor (e.g.: urn:oid:2.16.840.1.113883.2.4.6.1:00000000) - Subject: Usually the patient (e.g.: urn:oid:2.16.840.1.113883.2.4.6.3:999999990)
+	Subject IdentifierURI `json:"subject"`
 }
-
-// CustodianURI defines model for CustodianURI.
-type CustodianURI string
 
 // DataClassification defines model for DataClassification.
 type DataClassification string
@@ -76,9 +70,6 @@ type Period struct {
 	Start time.Time  `json:"start"`
 }
 
-// SubjectURI defines model for SubjectURI.
-type SubjectURI string
-
 // CreateOrUpdateConsentJSONBody defines parameters for CreateOrUpdateConsent.
 type CreateOrUpdateConsentJSONBody CreateConsentRequest
 
@@ -106,8 +97,10 @@ func (w *ServerInterfaceWrapper) CreateOrUpdateConsent(ctx echo.Context) error {
 	return err
 }
 
-// RegisterHandlers adds each server route to the EchoRouter.
-func RegisterHandlers(router interface {
+// This is a simple interface which specifies echo.Route addition functions which
+// are present on both echo.Echo and echo.Group, since we want to allow using
+// either of them for path registration
+type EchoRouter interface {
 	CONNECT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	DELETE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	GET(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
@@ -117,7 +110,10 @@ func RegisterHandlers(router interface {
 	POST(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	PUT(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
 	TRACE(path string, h echo.HandlerFunc, m ...echo.MiddlewareFunc) *echo.Route
-}, si ServerInterface) {
+}
+
+// RegisterHandlers adds each server route to the EchoRouter.
+func RegisterHandlers(router EchoRouter, si ServerInterface) {
 
 	wrapper := ServerInterfaceWrapper{
 		Handler: si,

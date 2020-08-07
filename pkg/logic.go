@@ -26,7 +26,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	cryptoClient "github.com/nuts-foundation/nuts-crypto/client"
 	"sync"
 	"time"
 
@@ -35,14 +34,11 @@ import (
 	"github.com/thedevsaddam/gojsonq/v2"
 
 	bridgeClient "github.com/nuts-foundation/consent-bridge-go-client/api"
-	cStoreClient "github.com/nuts-foundation/nuts-consent-store/client"
 	cStore "github.com/nuts-foundation/nuts-consent-store/pkg"
 	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
 	cryptoTypes "github.com/nuts-foundation/nuts-crypto/pkg/types"
-	eventClient "github.com/nuts-foundation/nuts-event-octopus/client"
 	events "github.com/nuts-foundation/nuts-event-octopus/pkg"
 	pkg2 "github.com/nuts-foundation/nuts-fhir-validation/pkg"
-	registryClient "github.com/nuts-foundation/nuts-registry/client"
 	"github.com/nuts-foundation/nuts-registry/pkg"
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
@@ -74,9 +70,19 @@ func logger() *logrus.Entry {
 
 func ConsentLogicInstance() *ConsentLogic {
 	oneEngine.Do(func() {
-		instance = &ConsentLogic{}
+		instance = NewConsentLogicInstance(ConsentLogicConfig{}, crypto.CryptoInstance(), pkg.RegistryInstance(), cStore.ConsentStoreInstance(), events.EventOctopusInstance())
 	})
 	return instance
+}
+
+func NewConsentLogicInstance(config ConsentLogicConfig, cryptoClient crypto.Client, registryClient pkg.RegistryClient, consentStoreClient cStore.ConsentStoreClient, eventOctopusClient events.EventOctopusClient) *ConsentLogic {
+	return &ConsentLogic{
+		Config:           config,
+		NutsCrypto:       cryptoClient,
+		NutsRegistry:     registryClient,
+		NutsConsentStore: consentStoreClient,
+		NutsEventOctopus: eventOctopusClient,
+	}
 }
 
 // StartConsentFlow is the start of the consentFlow. It is a a blocking method which will fire the first event.
@@ -107,12 +113,12 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	var consentID string
 	var records []bridgeClient.ConsentRecord
 	legalEntities := []bridgeClient.Identifier{
-		bridgeClient.Identifier(createConsentRequest.Actor),
-		bridgeClient.Identifier(createConsentRequest.Custodian),
+		bridgeClient.Identifier(createConsentRequest.Actor.String()),
+		bridgeClient.Identifier(createConsentRequest.Custodian.String()),
 	}
 
 	{
-		if !cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: string(createConsentRequest.Custodian)})) {
+		if !cl.NutsCrypto.PrivateKeyExists(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: createConsentRequest.Custodian.String()})) {
 			return nil, errors.New("custodian is not a known organization (no private key found on this node)")
 		}
 		logger().Debug("Custodian is known")
@@ -133,11 +139,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 		var fhirConsent string
 		var encryptedConsent cryptoTypes.DoubleEncryptedCipherText
 		{
-			var performer IdentifierURI
-			if createConsentRequest.Performer != nil {
-				performer = *createConsentRequest.Performer
-			}
-			if fhirConsent, err = cl.createFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, performer, record); fhirConsent == "" || err != nil {
+			if fhirConsent, err = cl.createFhirConsentResource(createConsentRequest.Custodian, createConsentRequest.Actor, createConsentRequest.Subject, createConsentRequest.Performer, record); fhirConsent == "" || err != nil {
 				return nil, fmt.Errorf("could not create the FHIR consent resource: %w", err)
 			}
 			logger().Debug("FHIR resource created", fhirConsent)
@@ -189,13 +191,13 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	eventID := uuid.NewV4().String()
 
 	now := time.Now()
-	nodeIdentity := core.NutsConfig().Identity()
+	nodeIdentity := core.NutsConfig().VendorID().String()
 	payloadData := bridgeClient.FullConsentRequestState{
 		Comment:               nil,
 		ConsentId:             bridgeClient.ConsentId{ExternalId: &consentID, UUID: eventID},
 		ConsentRecords:        records,
 		CreatedAt:             &now,
-		InitiatingLegalEntity: bridgeClient.Identifier(createConsentRequest.Custodian),
+		InitiatingLegalEntity: bridgeClient.Identifier(createConsentRequest.Custodian.String()),
 		InitiatingNode:        &nodeIdentity,
 		LegalEntities:         legalEntities,
 		UpdatedAt:             &now,
@@ -210,7 +212,7 @@ func (cl ConsentLogic) buildConsentRequestConstructedEvent(createConsentRequest 
 	event := &events.Event{
 		UUID:                 eventID,
 		Name:                 events.EventConsentRequestConstructed,
-		InitiatorLegalEntity: string(createConsentRequest.Custodian),
+		InitiatorLegalEntity: createConsentRequest.Custodian.String(),
 		RetryCount:           0,
 		ExternalID:           consentID,
 		Payload:              bsjs,
@@ -260,8 +262,8 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 			for _, cr := range crs.ConsentRecords {
 				for _, signature := range *cr.Signatures {
 					// Get the published public key from register
-					legalEntityID := signature.LegalEntity
-					legalEntity, err := cl.NutsRegistry.OrganizationById(string(legalEntityID))
+					legalEntityID := signature.LegalEntity.PartyID()
+					legalEntity, err := cl.NutsRegistry.OrganizationById(legalEntityID)
 					if err != nil {
 						errorMsg := fmt.Sprintf("Could not get organization public key for: %s, err: %v", legalEntityID, err)
 						event.Error = &errorMsg
@@ -651,10 +653,6 @@ func (ConsentLogic) Configure() error {
 // Start starts a new ConsentLogic engine. It populates the ConsentLogic struct with client from other engines and
 // subscribes to nats.io event.
 func (cl *ConsentLogic) Start() error {
-	cl.NutsCrypto = cryptoClient.NewCryptoClient()
-	cl.NutsRegistry = registryClient.NewRegistryClient()
-	cl.NutsConsentStore = cStoreClient.NewConsentStoreClient()
-	cl.NutsEventOctopus = eventClient.NewEventOctopusClient()
 	// This module has no mode feature (server/client) so we delegate it completely to the global mode
 	if core.NutsConfig().GetEngineMode("") != core.ServerEngineMode {
 		return nil

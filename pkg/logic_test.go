@@ -28,7 +28,9 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/nuts-foundation/nuts-crypto/client"
+	"github.com/nuts-foundation/nuts-consent-logic/test"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-go-test/io"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -43,7 +45,7 @@ import (
 	mock2 "github.com/nuts-foundation/nuts-crypto/test/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/mock"
 	"github.com/nuts-foundation/nuts-event-octopus/pkg"
-	nutsgo "github.com/nuts-foundation/nuts-go-core"
+	core "github.com/nuts-foundation/nuts-go-core"
 	mock3 "github.com/nuts-foundation/nuts-registry/mock"
 	"github.com/nuts-foundation/nuts-registry/pkg/db"
 	uuid "github.com/satori/go.uuid"
@@ -82,11 +84,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		signatures := []api.PartyAttachmentSignature{
 			{
-				LegalEntity: "urn:agb:00000002",
+				LegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
 				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: *validJwk},
 			},
 		}
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:oid:2.16.840.1.113883.2.4.6.1:00000002"}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				Signatures: &signatures,
@@ -99,11 +101,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(&otherKey.PublicKey, validPublicKey), nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(&otherKey.PublicKey, validPublicKey), nil)
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
-			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
@@ -114,11 +116,11 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(&db.Organization{Keys: []interface{}{map[string]interface{}{}}}, nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(&db.Organization{Keys: []interface{}{map[string]interface{}{}}}, nil)
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
-			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
@@ -129,12 +131,12 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(validPublicKey), nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(validPublicKey), nil)
 			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: api.JWK{}}
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
-			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
@@ -153,12 +155,12 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 			ctrl := gomock.NewController(t)
 			publisherMock := mock.NewMockIEventPublisher(ctrl)
 			registryMock := mock3.NewMockRegistryClient(ctrl)
-			registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(validPublicKey), nil)
+			registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(validPublicKey), nil)
 			signatures[0].Signature = api.SignatureWithKey{Data: "signature", PublicKey: *otherValidJwk}
 
 			encodedState, _ = json.Marshal(consentRequestState)
 			payload := base64.StdEncoding.EncodeToString(encodedState)
-			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+			event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 			publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), gomock.Any())
 
 			cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
@@ -178,18 +180,18 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		jwk := api.JWK{}
 		json.Unmarshal([]byte(publicKey1), &jwk)
-		registryMock.EXPECT().OrganizationById(gomock.Eq("urn:agb:00000002")).Return(getOrganization(jwk.AdditionalProperties), nil)
+		registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(jwk.AdditionalProperties), nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
 		signatures := []api.PartyAttachmentSignature{
 			{
 				Attachment:  "123",
-				LegalEntity: "urn:agb:00000002",
+				LegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002",
 				Signature:   api.SignatureWithKey{Data: "signature", PublicKey: jwk},
 			},
 		}
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000002"}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:oid:2.16.840.1.113883.2.4.6.1:00000002"}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				AttachmentHash: &attachmentHash,
@@ -199,10 +201,10 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		}
 		encodedState, _ = json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
-		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+		publisherMock.EXPECT().Publish(gomock.Eq(pkg.ChannelConsentRequest), pkg.Event{Name: pkg.EventAllSignaturesPresent, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 		defer ctrl.Finish()
 
-		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:agb:00000001"})
+		event := &(pkg.Event{Name: pkg.EventDistributedConsentRequestReceived, Payload: payload, InitiatorLegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"})
 
 		cl := ConsentLogic{EventPublisher: publisherMock, NutsRegistry: registryMock}
 		cl.HandleIncomingCordaEvent(event)
@@ -227,8 +229,8 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
 
-		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000001"}))
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001"}
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}))
+		consentRequestState.LegalEntities = []api.Identifier{"urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}
 		foo := "foo"
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
@@ -251,17 +253,17 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		publisherMock := mock.NewMockIEventPublisher(ctrl)
 		cryptoMock := mock2.NewMockClient(ctrl)
-		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"}))
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"}))
 		defer ctrl.Finish()
 		foo := "foo"
-		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				CipherText: &foo,
 				Signatures: &signatures,
 			},
 		}
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:oid:2.16.840.1.113883.2.4.6.1:00000001", "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"}
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -285,27 +287,27 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		cypherText2 := "cyphertext for 00000002"
 		// 00000001 already signed
-		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:agb:00000001"}}
+		signatures := []api.PartyAttachmentSignature{{Attachment: "foo", LegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000001"}}
 		consentRequestState.ConsentRecords = []api.ConsentRecord{
 			{
 				CipherText: &fooEncoded,
 				Metadata: &api.Metadata{
-					OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:agb:00000002", CipherText: &cypherText2}},
+					OrganisationSecureKeys: []api.ASymmetricKey{{LegalEntity: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002", CipherText: &cypherText2}},
 				},
 				Signatures: &signatures,
 			},
 		}
 		// two parties involved in this transaction
-		consentRequestState.LegalEntities = []api.Identifier{"urn:agb:00000001", "urn:agb:00000002"}
+		consentRequestState.LegalEntities = []api.Identifier{"urn:oid:2.16.840.1.113883.2.4.6.1:00000001", "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"}
 		// 00000002 is managed by this node
-		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"})).Return(true)
+		cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"})).Return(true)
 
 		// expect to receive a decrypt call for 00000002
 		validConsent, err := ioutil.ReadFile("../test-data/valid-consent.json")
 		if err != nil {
 			t.Error(err)
 		}
-		cryptoMock.EXPECT().DecryptKeyAndCipherText(gomock.Any(), types.KeyForEntity(types.LegalEntity{URI: "urn:agb:00000002"})).Return(validConsent, nil)
+		cryptoMock.EXPECT().DecryptKeyAndCipherText(gomock.Any(), types.KeyForEntity(types.LegalEntity{URI: "urn:oid:2.16.840.1.113883.2.4.6.1:00000002"})).Return(validConsent, nil)
 
 		encodedState, _ := json.Marshal(consentRequestState)
 		payload := base64.StdEncoding.EncodeToString(encodedState)
@@ -327,18 +329,17 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 }
 
 func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
+	cryptoClient := createCrypto(io.TestDirectory(t))
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 	publisherMock := mock.NewMockIEventPublisher(ctrl)
 
-	subjectID := "bsn:999999990"
-	custodianID := "agb:00000001"
-	party1ID := "agb:00000002"
-	performerID := "agb:00000007"
+	subjectID := test.BSNPartyID("999999990")
+	custodianID := test.AGBPartyID("00000001")
+	party1ID := test.AGBPartyID("00000002")
+	performerID := test.AGBPartyID("00000007")
 
-	cryptoClient := client.NewCryptoClient()
-
-	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID}))
+	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID.String()}))
 
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)
@@ -354,16 +355,16 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	registryClient.EXPECT().OrganizationById(gomock.Eq(party1ID)).Return(getOrganization(publicKeyID1), nil)
 
 	cl := ConsentLogic{EventPublisher: publisherMock, NutsCrypto: cryptoClient, NutsRegistry: registryClient}
-	performer := IdentifierURI(performerID)
+	performer := performerID
 	ccr := &CreateConsentRequest{
-		Actor:     IdentifierURI(party1ID),
-		Custodian: IdentifierURI(custodianID),
-		Performer: &performer,
+		Actor:     party1ID,
+		Custodian: custodianID,
+		Performer: performer,
 		Records: []Record{{
 			Period:       Period{Start: time.Now()},
 			ConsentProof: nil,
 		}},
-		Subject: IdentifierURI(subjectID),
+		Subject: subjectID,
 	}
 	event, err := cl.buildConsentRequestConstructedEvent(ccr)
 	if err != nil {
@@ -388,8 +389,18 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 
 	assert.NotNil(t, crs.CreatedAt)
 	assert.NotNil(t, crs.UpdatedAt)
-	assert.Equal(t, api.Identifier(custodianID), crs.InitiatingLegalEntity)
-	assert.Equal(t, nutsgo.NutsConfig().Identity(), *crs.InitiatingNode)
+	assert.Equal(t, custodianID.String(), string(crs.InitiatingLegalEntity))
+	assert.Equal(t, core.NutsConfig().VendorID().String(), *crs.InitiatingNode)
+}
+
+func createCrypto(testDirectory string) *crypto.Crypto {
+	cfg := crypto.TestCryptoConfig(testDirectory)
+	cfg.Keysize = crypto.MinKeySize
+	c := crypto.NewCryptoInstance(cfg)
+	if err := c.Configure(); err != nil {
+		panic(err)
+	}
+	return c
 }
 
 func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
@@ -453,7 +464,7 @@ func TestConsentLogic_isRelevantForThisNode(t *testing.T) {
 }
 
 func TestConsentLogic_SignConsentRequest(t *testing.T) {
-	legalEntity := "00000001"
+	legalEntity := test.AGBPartyID("00000001")
 	hexEncodedHash := []byte("attachmenthash123abc")
 	consentRecordHash := hex.EncodeToString(hexEncodedHash)
 
@@ -463,14 +474,14 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	cryptoMock := mock2.NewMockClient(ctrl)
 	privkey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	jwk, _ := jwk.New(&privkey.PublicKey)
-	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: legalEntity})).AnyTimes().Return(true)
-	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: legalEntity})).AnyTimes().Return(jwk, nil)
-	cryptoMock.EXPECT().Sign(hexEncodedHash, gomock.Eq(types.KeyForEntity(types.LegalEntity{URI: legalEntity}))).Return([]byte("signedBytes"), nil)
+	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: legalEntity.String()})).AnyTimes().Return(true)
+	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: legalEntity.String()})).AnyTimes().Return(jwk, nil)
+	cryptoMock.EXPECT().Sign(hexEncodedHash, gomock.Eq(types.KeyForEntity(types.LegalEntity{URI: legalEntity.String()}))).Return([]byte("signedBytes"), nil)
 
 	// prepare method parameter
 	event := pkg.Event{}
 	fcrs := api.FullConsentRequestState{
-		LegalEntities: []api.Identifier{api.Identifier(legalEntity)},
+		LegalEntities: []api.Identifier{api.Identifier(legalEntity.String())},
 		ConsentRecords: []api.ConsentRecord{
 			{
 				AttachmentHash: &consentRecordHash,
@@ -498,7 +509,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 	_ = json.Unmarshal(decodedPayload, &pas)
 
 	// Check all the values
-	if string(pas.LegalEntity) != "00000001" {
+	if string(pas.LegalEntity) != legalEntity.String() {
 		t.Error("expected signature")
 	}
 
@@ -639,19 +650,20 @@ kQIDAQAB
 	defer ctrl.Finish()
 	cryptoMock := mock2.NewMockClient(ctrl)
 	registryMock := mock3.NewMockRegistryClient(ctrl)
-	custodianAGB := "urn:agb:00000001"
-	actorAGB := "urn:agb:00000002"
+	custodian := test.AGBPartyID("00000001")
+	actor := test.AGBPartyID("00000002")
+	subject := test.BSNPartyID("1234")
 
-	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: custodianAGB})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
-	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: custodianAGB})).AnyTimes().Return(true)
+	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: custodian.String()})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: custodian.String()})).AnyTimes().Return(true)
 	cryptoMock.EXPECT().CalculateExternalId(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
 	cryptoMock.EXPECT().EncryptKeyAndPlainText(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
-	registryMock.EXPECT().OrganizationById(gomock.Eq(actorAGB)).Return(getOrganization(validPublicKey), nil)
+	registryMock.EXPECT().OrganizationById(gomock.Eq(actor)).Return(getOrganization(validPublicKey), nil)
 
 	createConsentRequest := &CreateConsentRequest{
-		Custodian: IdentifierURI(custodianAGB),
-		Subject:   "bsn:1234",
-		Actor:     IdentifierURI(actorAGB),
+		Custodian: custodian,
+		Subject:   subject,
+		Actor:     actor,
 		Records:   []Record{{}},
 	}
 	consentLogic := &ConsentLogic{NutsRegistry: registryMock, NutsCrypto: cryptoMock}

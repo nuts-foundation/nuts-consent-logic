@@ -19,14 +19,15 @@
 package pkg
 
 import (
+	core "github.com/nuts-foundation/nuts-go-core"
 	"time"
 )
 
 type CreateConsentRequest struct {
-	Actor     IdentifierURI
-	Custodian IdentifierURI
-	Subject   IdentifierURI
-	Performer *IdentifierURI
+	Actor     core.PartyID
+	Custodian core.PartyID
+	Subject   core.PartyID
+	Performer core.PartyID
 	Records   []Record
 }
 
@@ -39,7 +40,7 @@ type Record struct {
 	// PreviousRecordhash refers to a previous record.
 	PreviousRecordhash *string
 	ConsentProof       *DocumentReference
-	DataClass          []IdentifierURI
+	DataClass          []string
 	Period             Period
 }
 
@@ -57,9 +58,6 @@ type Period struct {
 	End   *time.Time
 	Start time.Time
 }
-
-// IdentifierURI defines component schema for IdentifierURI.
-type IdentifierURI string
 
 // abstraction of time.Now() for testing
 type nutsTimeI interface {

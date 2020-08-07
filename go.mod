@@ -1,6 +1,6 @@
 module github.com/nuts-foundation/nuts-consent-logic
 
-go 1.13
+go 1.14
 
 require (
 	github.com/cbroglie/mustache v1.2.0
@@ -11,13 +11,14 @@ require (
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
 	github.com/labstack/echo/v4 v4.1.16
 	github.com/lestrrat-go/jwx v0.9.2
-	github.com/nuts-foundation/consent-bridge-go-client v0.14.0
+	github.com/nuts-foundation/consent-bridge-go-client v0.14.1-0.20200807082655-106abf054a4e
 	github.com/nuts-foundation/nuts-consent-store v0.14.0
-	github.com/nuts-foundation/nuts-crypto v0.13.2-0.20200715061423-5270e931e6e0
+	github.com/nuts-foundation/nuts-crypto v0.13.2-0.20200806080556-29f6331938cf
 	github.com/nuts-foundation/nuts-event-octopus v0.14.0
 	github.com/nuts-foundation/nuts-fhir-validation v0.13.1-0.20200622140023-0bf91476bde5
-	github.com/nuts-foundation/nuts-go-core v0.14.1-0.20200624131634-75b5f59c0b8e
-	github.com/nuts-foundation/nuts-registry v0.13.3-0.20200720115329-5717e6e26ea4
+	github.com/nuts-foundation/nuts-go-core v0.14.1-0.20200803140648-33ac5360e61d
+	github.com/nuts-foundation/nuts-go-test v0.0.0-20200804135944-9e05711330e7
+	github.com/nuts-foundation/nuts-registry v0.13.3-0.20200806080525-77738a584d53
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.6.0
 	github.com/spf13/cobra v1.0.0

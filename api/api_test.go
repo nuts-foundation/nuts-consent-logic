@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"encoding/json"
+	"github.com/nuts-foundation/nuts-consent-logic/test"
 	"net/http"
 	"testing"
 	"time"
@@ -47,6 +48,11 @@ import (
 	"github.com/nuts-foundation/nuts-go-core/mock"
 )
 
+var actorID = IdentifierURI(test.AGBPartyID("00000001").String())
+var performerID = IdentifierURI(test.AGBPartyID("00000007").String())
+var custodianID = IdentifierURI(test.AGBPartyID("00000007").String())
+var subjectID = IdentifierURI(test.BSNPartyID("99999990").String())
+
 type EventPublisherMock struct{}
 
 func (EventPublisherMock) Publish(subject string, event pkg2.Event) error {
@@ -55,7 +61,6 @@ func (EventPublisherMock) Publish(subject string, event pkg2.Event) error {
 
 func jsonRequest() CreateConsentRequest {
 	// optional params:
-	performer := IdentifierURI("agb:00000007")
 	endDate := time.Date(2019, time.July, 1, 11, 0, 0, 0, time.UTC)
 
 	// complete request
@@ -76,10 +81,10 @@ func jsonRequest() CreateConsentRequest {
 				},
 			},
 		},
-		Actor:     "agb:00000001",
-		Custodian: "agb:00000007",
-		Subject:   "bsn:99999990",
-		Performer: &performer,
+		Actor:     actorID,
+		Custodian: custodianID,
+		Subject:   subjectID,
+		Performer: &performerID,
 	}
 
 }
@@ -96,7 +101,7 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 		publicKey, _ := jwk.New(sk.Public())
 		jwkMap, _ := cert.JwkToMap(publicKey)
 		jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
-		registryMock.EXPECT().OrganizationById("agb:00000001").Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil).Times(2)
+		registryMock.EXPECT().OrganizationById(actorID.PartyID()).Return(&db.Organization{Keys: []interface{}{jwkMap}}, nil).Times(2)
 		cryptoMock.EXPECT().GetPublicKeyAsJWK(gomock.Any()).Return(publicKey, nil).AnyTimes()
 		cryptoMock.EXPECT().PrivateKeyExists(gomock.Any()).Return(true).AnyTimes()
 		cryptoMock.EXPECT().CalculateExternalId(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("123external_id"), nil)
@@ -303,7 +308,6 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 }
 
 func Test_apiRequest2Internal(t *testing.T) {
-	performer := IdentifierURI("performer")
 	previousId := "-1"
 	start := time.Time{}
 	end := time.Time{}.AddDate(1, 0, 0)
@@ -313,10 +317,10 @@ func Test_apiRequest2Internal(t *testing.T) {
 	hash := "hash"
 
 	apiRequest := CreateConsentRequest{
-		Actor:     "actor",
-		Custodian: "custodian",
-		Subject:   "subject",
-		Performer: &performer,
+		Actor:     actorID,
+		Custodian: custodianID,
+		Subject:   subjectID,
+		Performer: &performerID,
 		Records: []ConsentRecord{{
 			ConsentProof: DocumentReference{
 				ID:          "3",
@@ -337,10 +341,10 @@ func Test_apiRequest2Internal(t *testing.T) {
 	}
 	internal := apiRequest2Internal(apiRequest)
 
-	assert.Equal(t, "actor", string(internal.Actor))
-	assert.Equal(t, "custodian", string(internal.Custodian))
-	assert.Equal(t, "subject", string(internal.Subject))
-	assert.Equal(t, "performer", string(*internal.Performer))
+	assert.Equal(t, actorID.PartyID(), internal.Actor)
+	assert.Equal(t, custodianID.PartyID(), internal.Custodian)
+	assert.Equal(t, subjectID.PartyID(), internal.Subject)
+	assert.Equal(t, performerID.PartyID(), internal.Performer)
 	assert.Len(t, internal.Records, 1)
 
 	internalRecord := internal.Records[0]
