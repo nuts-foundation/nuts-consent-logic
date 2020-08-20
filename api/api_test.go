@@ -308,59 +308,72 @@ func TestApiResource_NutsConsentLogicCreateConsent(t *testing.T) {
 }
 
 func Test_apiRequest2Internal(t *testing.T) {
-	previousId := "-1"
-	start := time.Time{}
-	end := time.Time{}.AddDate(1, 0, 0)
+	t.Run("ok", func(t *testing.T) {
 
-	url := "url"
-	contentType := "text/plain"
-	hash := "hash"
+		previousId := "-1"
+		start := time.Time{}
+		end := time.Time{}.AddDate(1, 0, 0)
 
-	apiRequest := CreateConsentRequest{
-		Actor:     actorID,
-		Custodian: custodianID,
-		Subject:   subjectID,
-		Performer: &performerID,
-		Records: []ConsentRecord{{
-			ConsentProof: DocumentReference{
-				ID:          "3",
-				Title:       "some.consent.doc",
-				URL:         &url,
-				ContentType: &contentType,
-				Hash:        &hash,
-			},
-			DataClass: []DataClassification{
-				"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
-			},
-			PreviousRecordHash: &previousId,
-			Period: Period{
-				End:   &end,
-				Start: start,
-			},
-		}},
-	}
-	internal := apiRequest2Internal(apiRequest)
+		url := "url"
+		contentType := "text/plain"
+		hash := "hash"
 
-	assert.Equal(t, actorID.PartyID(), internal.Actor)
-	assert.Equal(t, custodianID.PartyID(), internal.Custodian)
-	assert.Equal(t, subjectID.PartyID(), internal.Subject)
-	assert.Equal(t, performerID.PartyID(), internal.Performer)
-	assert.Len(t, internal.Records, 1)
+		apiRequest := CreateConsentRequest{
+			Actor:     actorID,
+			Custodian: custodianID,
+			Subject:   subjectID,
+			Performer: &performerID,
+			Records: []ConsentRecord{{
+				ConsentProof: DocumentReference{
+					ID:          "3",
+					Title:       "some.consent.doc",
+					URL:         &url,
+					ContentType: &contentType,
+					Hash:        &hash,
+				},
+				DataClass: []DataClassification{
+					"urn:oid:1.3.6.1.4.1.54851.1:MEDICAL",
+				},
+				PreviousRecordHash: &previousId,
+				Period: Period{
+					End:   &end,
+					Start: start,
+				},
+			}},
+		}
+		internal := apiRequest2Internal(apiRequest)
 
-	internalRecord := internal.Records[0]
-	apiRecord := apiRequest.Records[0]
+		assert.Equal(t, actorID.PartyID(), internal.Actor)
+		assert.Equal(t, custodianID.PartyID(), internal.Custodian)
+		assert.Equal(t, subjectID.PartyID(), internal.Subject)
+		assert.Equal(t, performerID.PartyID(), internal.Performer)
+		assert.Len(t, internal.Records, 1)
 
-	assert.Equal(t, *internalRecord.PreviousRecordhash, *apiRecord.PreviousRecordHash)
-	assert.Equal(t, internalRecord.ConsentProof.Title, apiRecord.ConsentProof.Title)
-	assert.Equal(t, internalRecord.ConsentProof.ID, apiRecord.ConsentProof.ID)
-	assert.Equal(t, *internalRecord.ConsentProof.ContentType, *apiRecord.ConsentProof.ContentType)
-	assert.Equal(t, *internalRecord.ConsentProof.URL, *apiRecord.ConsentProof.URL)
-	assert.Equal(t, *internalRecord.ConsentProof.Hash, *apiRecord.ConsentProof.Hash)
-	assert.Equal(t, start, internalRecord.Period.Start)
-	assert.Equal(t, end, *internalRecord.Period.End)
+		internalRecord := internal.Records[0]
+		apiRecord := apiRequest.Records[0]
 
-	assert.Len(t, internalRecord.DataClass, 1)
-	assert.Equal(t, string(internalRecord.DataClass[0]), string(apiRecord.DataClass[0]))
+		assert.Equal(t, *internalRecord.PreviousRecordhash, *apiRecord.PreviousRecordHash)
+		assert.Equal(t, internalRecord.ConsentProof.Title, apiRecord.ConsentProof.Title)
+		assert.Equal(t, internalRecord.ConsentProof.ID, apiRecord.ConsentProof.ID)
+		assert.Equal(t, *internalRecord.ConsentProof.ContentType, *apiRecord.ConsentProof.ContentType)
+		assert.Equal(t, *internalRecord.ConsentProof.URL, *apiRecord.ConsentProof.URL)
+		assert.Equal(t, *internalRecord.ConsentProof.Hash, *apiRecord.ConsentProof.Hash)
+		assert.Equal(t, start, internalRecord.Period.Start)
+		assert.Equal(t, end, *internalRecord.Period.End)
+
+		assert.Len(t, internalRecord.DataClass, 1)
+		assert.Equal(t, string(internalRecord.DataClass[0]), string(apiRecord.DataClass[0]))
+	})
+	t.Run("ok - performer empty", func(t *testing.T) {
+		apiRequest := CreateConsentRequest{
+			Actor:     actorID,
+			Custodian: custodianID,
+			Subject:   subjectID,
+			Performer: nil,
+		}
+		internal := apiRequest2Internal(apiRequest)
+		assert.True(t, internal.Performer.IsZero())
+	})
 }
 
 // A matcher to check for successful jobCreateResponse
