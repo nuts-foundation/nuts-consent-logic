@@ -104,7 +104,9 @@ func apiRequest2Internal(apiRequest CreateConsentRequest) *pkg.CreateConsentRequ
 		Custodian: apiRequest.Custodian.PartyID(),
 		Actor:     apiRequest.Actor.PartyID(),
 		Subject:   apiRequest.Subject.PartyID(),
-		Performer: apiRequest.Performer.PartyID(),
+	}
+	if apiRequest.Performer != nil {
+		createConsentRequest.Performer = apiRequest.Performer.PartyID()
 	}
 
 	for _, record := range apiRequest.Records {
