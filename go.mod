@@ -20,7 +20,7 @@ require (
 	github.com/nuts-foundation/nuts-go-test v0.0.0-20200804135944-9e05711330e7
 	github.com/nuts-foundation/nuts-registry v0.13.3-0.20200806080525-77738a584d53
 	github.com/satori/go.uuid v1.2.0
-	github.com/sirupsen/logrus v1.6.0
+	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
