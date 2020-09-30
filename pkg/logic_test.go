@@ -28,12 +28,13 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"github.com/nuts-foundation/nuts-consent-logic/test"
-	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
-	"github.com/nuts-foundation/nuts-go-test/io"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/nuts-foundation/nuts-consent-logic/test"
+	crypto "github.com/nuts-foundation/nuts-crypto/pkg"
+	"github.com/nuts-foundation/nuts-go-test/io"
 
 	"github.com/golang/mock/gomock"
 	"github.com/lestrrat-go/jwx/jwk"
@@ -339,7 +340,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 	party1ID := test.AGBPartyID("00000002")
 	performerID := test.AGBPartyID("00000007")
 
-	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID.String()}))
+	_, _ = cryptoClient.GenerateKeyPair(types.KeyForEntity(types.LegalEntity{URI: custodianID.String()}), false)
 
 	reader := rand.Reader
 	key, _ := rsa.GenerateKey(reader, 2048)

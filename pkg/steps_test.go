@@ -22,11 +22,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/nuts-foundation/nuts-consent-logic/test"
-	"github.com/nuts-foundation/nuts-go-test/io"
 	"io/ioutil"
 	"testing"
 	"time"
+
+	"github.com/nuts-foundation/nuts-consent-logic/test"
+	"github.com/nuts-foundation/nuts-go-test/io"
 
 	"github.com/golang/mock/gomock"
 	"github.com/lestrrat-go/jwx/jwa"
@@ -115,7 +116,7 @@ func TestCreateFhirConsentResource(t *testing.T) {
 				CreateConsentRequest{
 					Subject:   test.BSNPartyID("999999990"),
 					Custodian: test.AGBPartyID("00000000"),
-					Actor: test.AGBPartyID("00000001"),
+					Actor:     test.AGBPartyID("00000001"),
 					Records: []Record{{
 						Period: Period{
 							Start: time.Date(2019, time.January, 1, 11, 0, 0, 0, time.UTC),
@@ -173,7 +174,7 @@ func TestEncryptFhirConsent(t *testing.T) {
 	partyID := test.AGBPartyID("00000002")
 
 	cryptoClient := createCrypto(io.TestDirectory(t))
-	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}))
+	_, _ = cryptoClient.GenerateKeyPair(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}), false)
 	publicKey, _ := cryptoClient.GetPublicKeyAsJWK(cryptoTypes.KeyForEntity(cryptoTypes.LegalEntity{URI: custodianID.String()}))
 	jwkMap, _ := cert.JwkToMap(publicKey)
 	jwkMap["kty"] = jwkMap["kty"].(jwa.KeyType).String() // annoying thing from jwk lib
@@ -238,7 +239,7 @@ func TestGetConsentId(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 
 			cClient := createCrypto(io.TestDirectory(t))
-			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: tt.args.request.Custodian.String()}))
+			_, _ = cClient.GenerateKeyPair(cryptoTypes.KeyForEntity(types.LegalEntity{URI: tt.args.request.Custodian.String()}), false)
 
 			got, err := ConsentLogic{
 				NutsCrypto: cClient,
