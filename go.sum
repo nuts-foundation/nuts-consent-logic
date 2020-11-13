@@ -584,8 +584,10 @@ github.com/nuts-foundation/nuts-go-test v0.15.0 h1:rf47jTpki2du+BEiUcRnDdajp0cU6
 github.com/nuts-foundation/nuts-go-test v0.15.0/go.mod h1:aZ5Urj7v1lH8AD2TIejEiPhRX8t6YG9PVXhuRyNIAII=
 github.com/nuts-foundation/nuts-network v0.15.0 h1:nq9P34KvYxBi5aOeYZ3jNAVArJnH4h2asVm3P8LA/ng=
 github.com/nuts-foundation/nuts-network v0.15.0/go.mod h1:W/o9YTPytcxP0ktDW9IMslbrVtjN1Qui3kVkh0gRY94=
+github.com/nuts-foundation/nuts-network v0.15.4/go.mod h1:9FNSrinopWygdz/eOvtM7t9L/iuq2tGlbzbbM94y0To=
 github.com/nuts-foundation/nuts-registry v0.15.0 h1:GrLPUStHwhZCy13FCHdRGS0cF2UeCVjBsoOdAsCWmYM=
 github.com/nuts-foundation/nuts-registry v0.15.0/go.mod h1:kTpes42wvJvrPYzzL2M//RMBRWw5tzQtNRs+AiM28KA=
+github.com/nuts-foundation/nuts-registry v0.15.2/go.mod h1:VCX4jFKQHTyWx7kVwmA/QaPRSPVcWb3iX5ZK0HezBm0=
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
@@ -1149,6 +1151,7 @@ google.golang.org/grpc v1.29.1/go.mod h1:itym6AZVZYACWQqET3MqgPpjcuV5QH3BxFS3Iji
 google.golang.org/grpc v1.30.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
 google.golang.org/grpc v1.31.0 h1:T7P4R73V3SSDPhH7WW7ATbfViLtmamH0DKrP3f9AuDI=
 google.golang.org/grpc v1.31.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
+google.golang.org/grpc v1.32.0/go.mod h1:N36X2cJ7JwdamYAgDz+s+rVMFjt3numwzf/HckM8pak=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
 google.golang.org/protobuf v0.0.0-20200228230310-ab0ca4ff8a60/go.mod h1:cfTl7dwQJ+fmap5saPgwCLgHXTUD7jkjRqWcaiX5VyM=
