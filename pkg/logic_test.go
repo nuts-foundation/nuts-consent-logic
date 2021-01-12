@@ -181,7 +181,7 @@ func TestConsentLogic_HandleIncomingCordaEvent(t *testing.T) {
 
 		jwk := api.JWK{}
 		json.Unmarshal([]byte(publicKey1), &jwk)
-		registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(jwk.AdditionalProperties), nil)
+		registryMock.EXPECT().OrganizationById(gomock.Eq(test.AGBPartyID("00000002"))).Return(getOrganization(jwk), nil)
 
 		cypherText := "foo"
 		attachmentHash := "123hash"
@@ -396,7 +396,7 @@ func TestConsentLogic_createNewConsentRequestEvent(t *testing.T) {
 
 func createCrypto(testDirectory string) *crypto.Crypto {
 	cfg := crypto.TestCryptoConfig(testDirectory)
-	cfg.Keysize = crypto.MinKeySize
+	cfg.Keysize = crypto.MinRSAKeySize
 	c := crypto.NewCryptoInstance(cfg)
 	if err := c.Configure(); err != nil {
 		panic(err)
@@ -514,7 +514,7 @@ func TestConsentLogic_SignConsentRequest(t *testing.T) {
 		t.Error("expected signature")
 	}
 
-	if len(pas.Signature.PublicKey.AdditionalProperties) == 0 {
+	if len(pas.Signature.PublicKey) == 0 {
 		t.Error("expected payload.signature.publicKey to be set")
 	}
 
@@ -610,7 +610,7 @@ func TestConsentLogic_HandleEventConsentDistributed(t *testing.T) {
 		cl := &ConsentLogic{NutsCrypto: cryptoMock, NutsConsentStore: consentStoreMock, EventPublisher: publisherMock}
 
 		for _, org := range allOrgs {
-			cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+			cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: org})).AnyTimes().Return(jwk.NewRSAPublicKey(), nil)
 		}
 
 		t.Run(tName, func(t *testing.T) {
@@ -655,7 +655,7 @@ kQIDAQAB
 	actor := test.AGBPartyID("00000002")
 	subject := test.BSNPartyID("1234")
 
-	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: custodian.String()})).AnyTimes().Return(&jwk.RSAPublicKey{}, nil)
+	cryptoMock.EXPECT().GetPublicKeyAsJWK(types.KeyForEntity(types.LegalEntity{URI: custodian.String()})).AnyTimes().Return(jwk.NewRSAPublicKey(), nil)
 	cryptoMock.EXPECT().PrivateKeyExists(types.KeyForEntity(types.LegalEntity{URI: custodian.String()})).AnyTimes().Return(true)
 	cryptoMock.EXPECT().CalculateExternalId(gomock.Any(), gomock.Any(), gomock.Any()).Return([]byte("externalID"), nil)
 	cryptoMock.EXPECT().EncryptKeyAndPlainText(gomock.Any(), gomock.Any()).Return(types.DoubleEncryptedCipherText{}, nil)
@@ -698,6 +698,15 @@ func getOrganization(keys ...interface{}) *db.Organization {
 		}
 		{
 			keyAsMap2, ok := key.(map[string]interface{})
+			if ok {
+				keyAsJWK, err = cert.MapToJwk(keyAsMap2)
+				if err != nil {
+					panic(err)
+				}
+			}
+		}
+		{
+			keyAsMap2, ok := key.(api.JWK)
 			if ok {
 				keyAsJWK, err = cert.MapToJwk(keyAsMap2)
 				if err != nil {

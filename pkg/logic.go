@@ -272,7 +272,7 @@ func (cl ConsentLogic) HandleIncomingCordaEvent(event *events.Event) {
 						return
 					}
 
-					jwkFromSig, err := cert.MapToJwk(signature.Signature.PublicKey.AdditionalProperties)
+					jwkFromSig, err := cert.MapToJwk(signature.Signature.PublicKey)
 					if err != nil {
 						errorMsg := fmt.Sprintf("%s: unable to parse signature public key as JWK: %v", identity(), err)
 						logger().Warn(errorMsg)
@@ -441,7 +441,7 @@ func (cl ConsentLogic) signConsentRequest(event events.Event) (*events.Event, er
 			LegalEntity: bridgeClient.Identifier(legalEntityToSignFor),
 			Signature: bridgeClient.SignatureWithKey{
 				Data:      encodedSignatureBytes,
-				PublicKey: bridgeClient.JWK{AdditionalProperties: jwk},
+				PublicKey: bridgeClient.JWK(jwk),
 			},
 		}
 
