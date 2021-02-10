@@ -20,7 +20,7 @@ require (
 	github.com/nuts-foundation/nuts-registry v0.16.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.7.0
-	github.com/spf13/cobra v1.1.1
+	github.com/spf13/cobra v1.1.2
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
 	github.com/thedevsaddam/gojsonq/v2 v2.5.2
